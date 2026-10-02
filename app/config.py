@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     #   python -c "import secrets; print(secrets.token_urlsafe(32))"
     site_api_key: str = ""
     # OpenRouter: this service uses it for embeddings and for reading scanned pages (OCR).
-    # (The chat model belongs to the main website — see the Isnad_app repository.)
+    # (The chat model belongs to the main website — see the Isnad_Website repository.)
     openrouter_api_key: str = ""
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
 

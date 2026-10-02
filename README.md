@@ -15,7 +15,7 @@ Only authorized users can open it, with a username and password. From its dashbo
 - follows visits, visitors, searches and chat questions, and exports reports to **Excel** or **PDF**.
 
 The main website — public search, verification and chat with the model — is a separate project,
-**Isnad_app**, deployed as its own service. It connects to this database through a small API
+**Isnad_Website**, deployed as its own service. It connects to this database through a small API
 protected by `SITE_API_KEY`; this repository contains the database only.
 
 **Team:** فريق إسناد (Isnad) — سلمان نايف المحيسن (almuhaysins@outlook.sa) ·

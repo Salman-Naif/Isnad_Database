@@ -2,7 +2,7 @@
 
 Tests for the database service API (`/api/v1`): is it up, does the key work, does searching
 the uploaded sources return the right passages, and are bad requests refused.
-The chat-model tests live in the **Isnad_app** repository.
+The chat-model tests live in the **Isnad_Website** repository.
 
 | File                              | What it is                                              |
 | --------------------------------- | ------------------------------------------------------- |

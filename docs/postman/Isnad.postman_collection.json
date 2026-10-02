@@ -2,7 +2,7 @@
 	"info": {
 		"_postman_id": "ccb28bf7-349a-5484-85fd-0e51372892b5",
 		"name": "Isnad — Database Tests",
-		"description": "Tests for the Isnad database service (/api/v1). Select the 'Isnad' environment, fill base_url and site_key, then run folder A in order. The chat-model tests live in the Isnad_app repository.",
+		"description": "Tests for the Isnad database service (/api/v1). Select the 'Isnad' environment, fill base_url and site_key, then run folder A in order. The chat-model tests live in the Isnad_Website repository.",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"auth": {
