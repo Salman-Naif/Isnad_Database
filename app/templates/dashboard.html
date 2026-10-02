@@ -1,0 +1,310 @@
+{% extends "base.html" %}
+
+{% block body_class %}app-page{% endblock %}
+
+{% macro icon(name, cls="icon") %}<svg class="{{ cls }}" aria-hidden="true"><use href="#i-{{ name }}"/></svg>{% endmacro %}
+
+{% block body %}
+<div class="app">
+  <!-- ============ Sidebar ============ -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <span class="logo-mark" aria-hidden="true"><svg class="icon"><use href="#i-link"/></svg></span>
+      <div>
+        <p class="brand-name">إسناد</p>
+        <p class="brand-sub">قاعدة البيانات</p>
+      </div>
+    </div>
+
+    <nav class="nav" role="tablist" aria-label="أقسام لوحة التحكم">
+      <button type="button" role="tab" class="nav-item" data-tab="status">{{ icon("activity") }}<span class="nav-label">الحالة</span><span class="nav-short">الحالة</span></button>
+      <button type="button" role="tab" class="nav-item" data-tab="sources">{{ icon("files") }}<span class="nav-label">المصادر</span><span class="nav-short">المصادر</span><span id="nav-busy" class="nav-badge" hidden></span></button>
+      <button type="button" role="tab" class="nav-item" data-tab="control">{{ icon("sliders") }}<span class="nav-label">التحكم بالموقع</span><span class="nav-short">التحكم</span></button>
+      <button type="button" role="tab" class="nav-item" data-tab="reports">{{ icon("chart") }}<span class="nav-label">الإحصائيات والتقارير</span><span class="nav-short">التقارير</span></button>
+      <button type="button" role="tab" class="nav-item" data-tab="admins">{{ icon("users") }}<span class="nav-label">المستخدمون</span><span class="nav-short">المستخدمون</span></button>
+    </nav>
+
+    <div class="sidebar-user">
+      <span class="avatar" aria-hidden="true">{{ admin.username[:1] | upper }}</span>
+      <div class="sidebar-user-text">
+        <strong dir="ltr">{{ admin.username }}</strong>
+        <span>مستخدم مصرّح له</span>
+      </div>
+      <button id="logout-btn" type="button" class="icon-btn on-dark" aria-label="تسجيل الخروج" title="تسجيل الخروج">
+        {{ icon("logout") }}
+      </button>
+    </div>
+  </aside>
+
+  <!-- ============ Main ============ -->
+  <main class="main">
+    <header class="page-header">
+      <div>
+        <h1 id="page-title" class="page-title">الحالة</h1>
+        <p id="page-subtitle" class="page-subtitle"></p>
+      </div>
+    </header>
+
+    {% if admin.must_change_password %}
+    <div id="password-banner" class="alert warning banner" role="alert">
+      {{ icon("alert") }}
+      <div>
+        <strong>أنت تستخدم كلمة المرور الافتراضية.</strong>
+        غيّرها الآن حتى لا يتمكن أحد غيرك من الدخول؛ لن تعمل بقية الأقسام قبل ذلك.
+      </div>
+      <a class="btn warning-btn sm" href="#admins">تغيير كلمة المرور</a>
+    </div>
+    {% endif %}
+
+    <!-- ============ Status ============ -->
+    <section id="tab-status" class="tab-panel" role="tabpanel" hidden>
+      <div class="section-head">
+        <h2 class="section-title">آخر 30 يومًا</h2>
+      </div>
+      <div id="overview-tiles" class="tiles"></div>
+
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <h2 class="card-title">فحص النظام</h2>
+            <p id="status-time" class="muted small"></p>
+          </div>
+          <div class="card-actions">
+            <span id="status-summary" class="pill" hidden></span>
+            <button id="status-btn" type="button" class="btn secondary sm">{{ icon("refresh") }}<span>فحص الآن</span></button>
+          </div>
+        </div>
+        <ul id="status-list" class="checks"></ul>
+      </div>
+    </section>
+
+    <!-- ============ Sources ============ -->
+    <section id="tab-sources" class="tab-panel" role="tabpanel" hidden>
+      <div class="card">
+        <label id="drop-zone" class="drop-zone" for="files">
+          <input id="files" type="file" multiple
+                 accept=".pdf,.docx,.txt,.md,.json,.csv,.png,.jpg,.jpeg,.tif,.tiff,.bmp,.webp">
+          <span class="drop-icon">{{ icon("upload") }}</span>
+          <span class="drop-title">اسحب الملفات هنا أو <u>اختر من جهازك</u></span>
+          <span class="drop-types">
+            <span class="type-chip">PDF</span><span class="type-chip">Word</span><span class="type-chip">TXT</span>
+            <span class="type-chip">صور ممسوحة</span><span class="type-chip">JSON / CSV أحاديث</span>
+          </span>
+          <span class="muted small">حتى {{ max_upload_mb }} MB للملف · تُعالَج في الخلفية ويمكنك إغلاق الصفحة</span>
+        </label>
+        <ul id="upload-log" class="upload-list" aria-live="polite"></ul>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <h2 class="card-title">الملفات المرفوعة</h2>
+            <p id="sources-summary" class="muted small"></p>
+          </div>
+          <div class="card-actions">
+            <span class="input-wrap compact">
+              {{ icon("search", "icon input-icon") }}
+              <input id="sources-filter" class="input with-icon" type="search" placeholder="بحث باسم الملف" aria-label="بحث باسم الملف">
+            </span>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table sources-table">
+            <thead>
+              <tr>
+                <th>الملف</th><th>الحالة</th><th class="num">المقاطع</th>
+                <th>رفعه</th><th>تاريخ الرفع</th><th><span class="sr-only">إجراءات</span></th>
+              </tr>
+            </thead>
+            <tbody id="sources-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ Website control ============ -->
+    <section id="tab-control" class="tab-panel" role="tabpanel" hidden>
+      <form id="control-form" class="card" novalidate>
+        <div class="card-head">
+          <div>
+            <h2 class="card-title">الموقع الأساسي</h2>
+            <p class="muted small">يقرأ الموقع هذه الإعدادات مع كل زيارة، فيظهر التغيير فورًا.</p>
+          </div>
+        </div>
+
+        <div class="setting">
+          <span class="setting-icon warn">{{ icon("tool") }}</span>
+          <div class="setting-text">
+            <strong>وضع الصيانة</strong>
+            <span class="muted small">إيقاف الموقع مؤقتًا وعرض رسالة للزوار</span>
+          </div>
+          <label class="switch"><input id="maintenance_mode" type="checkbox"><span class="slider" aria-hidden="true"></span><span class="sr-only">وضع الصيانة</span></label>
+        </div>
+        <div id="maintenance-message-row" class="setting-sub">
+          <div class="field">
+            <label class="field-label" for="maintenance_message">رسالة الصيانة</label>
+            <input id="maintenance_message" class="input" type="text" maxlength="500">
+          </div>
+        </div>
+
+        <div class="setting">
+          <span class="setting-icon">{{ icon("search") }}</span>
+          <div class="setting-text">
+            <strong>البحث والتحقق</strong>
+            <span class="muted small">يتيح للزوار التحقق من الأحاديث</span>
+          </div>
+          <label class="switch"><input id="search_enabled" type="checkbox"><span class="slider" aria-hidden="true"></span><span class="sr-only">البحث والتحقق</span></label>
+        </div>
+
+        <div class="setting">
+          <span class="setting-icon">{{ icon("message") }}</span>
+          <div class="setting-text">
+            <strong>الحوار مع النموذج</strong>
+            <span class="muted small">أوقفه مؤقتًا إذا اقترب رصيد OpenRouter من النفاد</span>
+          </div>
+          <label class="switch"><input id="chat_enabled" type="checkbox"><span class="slider" aria-hidden="true"></span><span class="sr-only">الحوار مع النموذج</span></label>
+        </div>
+
+        <div class="form-grid two">
+          <div class="field">
+            <label class="field-label" for="announcement">{{ icon("megaphone", "icon xs") }} إعلان أعلى الموقع</label>
+            <input id="announcement" class="input" type="text" maxlength="500" placeholder="اتركه فارغًا لإخفائه">
+          </div>
+          <div class="field">
+            <label class="field-label" for="main_site_url">{{ icon("link", "icon xs") }} رابط الموقع الأساسي (لفحص حالته)</label>
+            <input id="main_site_url" class="input" type="url" dir="ltr" placeholder="https://isnad.example.com">
+          </div>
+        </div>
+
+        <div class="form-footer">
+          <span id="control-dirty" class="muted small" hidden>توجد تغييرات غير محفوظة</span>
+          <button id="control-save" type="submit" class="btn primary" disabled>{{ icon("check") }}<span>حفظ التغييرات</span></button>
+        </div>
+        <p id="control-message" class="alert" hidden></p>
+      </form>
+
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <h2 class="card-title">{{ icon("plug", "icon sm") }} ربط الموقع الأساسي بقاعدة البيانات</h2>
+            <p class="muted small">
+              يتصل الموقع من خادمه (وليس من متصفح الزائر) ويرسل <code>SITE_API_KEY</code> في ترويسة <code>X-API-Key</code>.
+            </p>
+          </div>
+        </div>
+        <ul class="endpoints">
+          <li><span class="method get">GET</span><code class="endpoint" data-path="/site-config"></code><span class="muted small">إعدادات التحكم أعلاه</span><button type="button" class="icon-btn copy-btn" aria-label="نسخ الرابط" title="نسخ الرابط">{{ icon("copy") }}</button></li>
+          <li><span class="method post">POST</span><code class="endpoint" data-path="/search"></code><span class="muted small">أقرب النصوص للاستعلام مع الحكم والسند</span><button type="button" class="icon-btn copy-btn" aria-label="نسخ الرابط" title="نسخ الرابط">{{ icon("copy") }}</button></li>
+          <li><span class="method get">GET</span><code class="endpoint" data-path="/topics"></code><span class="muted small">موضوعات الأحاديث المنظّمة</span><button type="button" class="icon-btn copy-btn" aria-label="نسخ الرابط" title="نسخ الرابط">{{ icon("copy") }}</button></li>
+          <li><span class="method post">POST</span><code class="endpoint" data-path="/events"></code><span class="muted small">تسجيل زيارة أو بحث أو سؤال (للإحصائيات)</span><button type="button" class="icon-btn copy-btn" aria-label="نسخ الرابط" title="نسخ الرابط">{{ icon("copy") }}</button></li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ============ Reports ============ -->
+    <section id="tab-reports" class="tab-panel" role="tabpanel" hidden>
+      <div class="toolbar card">
+        <div class="presets" role="group" aria-label="الفترة">
+          <button type="button" class="chip" data-days="7">7 أيام</button>
+          <button type="button" class="chip" data-days="30">30 يومًا</button>
+          <button type="button" class="chip" data-days="90">90 يومًا</button>
+        </div>
+        <div class="range">
+          <label class="range-field"><span>من</span><input id="report-from" type="date" class="input"></label>
+          <label class="range-field"><span>إلى</span><input id="report-to" type="date" class="input"></label>
+          <button id="report-btn" type="button" class="btn secondary sm">عرض</button>
+        </div>
+        <div class="export-row">
+          <a id="export-xlsx" class="btn secondary sm" href="#">{{ icon("table") }}<span>تصدير Excel</span></a>
+          <a id="export-pdf" class="btn secondary sm" href="#">{{ icon("download") }}<span>تصدير PDF</span></a>
+        </div>
+      </div>
+      <p id="report-message" class="alert error" hidden></p>
+
+      <div id="report-tiles" class="tiles"></div>
+
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <h2 class="card-title">الزيارات اليومية</h2>
+            <p id="chart-caption" class="muted small"></p>
+          </div>
+          <button id="chart-table-toggle" type="button" class="btn ghost sm" aria-pressed="false">{{ icon("table") }}<span>عرض كجدول</span></button>
+        </div>
+        <div id="daily-chart" class="chart" role="img" aria-label="الزيارات اليومية"></div>
+        <div id="daily-table" class="table-wrap" hidden></div>
+        <div id="chart-tooltip" class="chart-tooltip" role="status" hidden></div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h2 class="card-title">{{ icon("search", "icon sm") }} أكثر عمليات البحث</h2>
+          <ol id="top-searches" class="rank-list"></ol>
+        </div>
+        <div class="card">
+          <h2 class="card-title">{{ icon("message", "icon sm") }} أكثر أسئلة الحوار</h2>
+          <ol id="top-questions" class="rank-list"></ol>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 class="card-title">نتائج البحث</h2>
+        <ul id="search-results" class="rank-list plain"></ul>
+      </div>
+    </section>
+
+    <!-- ============ Users ============ -->
+    <section id="tab-admins" class="tab-panel" role="tabpanel" hidden>
+      <div class="grid-2 align-start">
+        <form id="password-form" class="card" novalidate>
+          <h2 class="card-title">{{ icon("lock", "icon sm") }} حسابي — تغيير كلمة المرور</h2>
+          <p class="muted small">بعد التغيير تُغلق جلساتك المفتوحة على الأجهزة الأخرى.</p>
+          <div class="field">
+            <label class="field-label" for="current-password">كلمة المرور الحالية</label>
+            <span class="input-wrap">
+              <input id="current-password" class="input with-action" type="password" dir="ltr" autocomplete="current-password" required>
+              <button type="button" class="input-action" data-toggle-password="current-password" aria-label="إظهار كلمة المرور" title="إظهار كلمة المرور">{{ icon("eye") }}</button>
+            </span>
+          </div>
+          <div class="field">
+            <label class="field-label" for="new-own-password">كلمة المرور الجديدة</label>
+            <span class="input-wrap">
+              <input id="new-own-password" class="input with-action" type="password" dir="ltr" autocomplete="new-password" minlength="8" required>
+              <button type="button" class="input-action" data-toggle-password="new-own-password" aria-label="إظهار كلمة المرور" title="إظهار كلمة المرور">{{ icon("eye") }}</button>
+            </span>
+            <span class="strength" aria-hidden="true"><span id="strength-bar"></span></span>
+            <span id="strength-text" class="muted small">8 أحرف على الأقل</span>
+          </div>
+          <div class="field">
+            <label class="field-label" for="confirm-own-password">تأكيد كلمة المرور الجديدة</label>
+            <input id="confirm-own-password" class="input" type="password" dir="ltr" autocomplete="new-password" minlength="8" required>
+          </div>
+          <p id="password-message" class="alert" hidden></p>
+          <button type="submit" class="btn primary">{{ icon("check") }}<span>حفظ كلمة المرور</span></button>
+        </form>
+
+        <div class="card">
+          <h2 class="card-title">{{ icon("users", "icon sm") }} المستخدمون المصرّح لهم</h2>
+          <ul id="admins-list" class="people"></ul>
+
+          <h3 class="sub-title">إضافة مستخدم</h3>
+          <form id="admin-form" class="stack" novalidate>
+            <input id="new-username" class="input" type="text" placeholder="اسم المستخدم (بالإنجليزية)" dir="ltr" autocomplete="off" required aria-label="اسم المستخدم">
+            <input id="new-password" class="input" type="password" placeholder="كلمة المرور (8 أحرف على الأقل)" dir="ltr" autocomplete="new-password" required aria-label="كلمة المرور">
+            <button type="submit" class="btn secondary">{{ icon("plus") }}<span>إضافة مستخدم</span></button>
+          </form>
+          <p id="admin-message" class="alert" hidden></p>
+        </div>
+      </div>
+    </section>
+
+    <footer class="app-footer">© فريق إسناد (Isnad)</footer>
+  </main>
+</div>
+
+<div id="toasts" class="toasts" aria-live="polite"></div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', path='js/dashboard.js').path }}" data-admin-id="{{ admin.id }}"></script>
+{% endblock %}

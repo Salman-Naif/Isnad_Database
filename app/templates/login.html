@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}إسناد — تسجيل الدخول{% endblock %}
+{% block body_class %}login-page{% endblock %}
+
+{% block body %}
+<main class="login-shell">
+  <section class="login-card" aria-labelledby="login-title">
+    <div class="login-brand">
+      <span class="logo-mark" aria-hidden="true"><svg class="icon"><use href="#i-link"/></svg></span>
+      <div>
+        <p class="brand-name">إسناد</p>
+        <p class="brand-sub">قاعدة البيانات</p>
+      </div>
+    </div>
+
+    <h1 id="login-title" class="login-title">تسجيل الدخول</h1>
+    <p class="muted">هذه الصفحة للمستخدمين المصرّح لهم فقط.</p>
+
+    <form id="login-form" novalidate>
+      <div class="field">
+        <label class="field-label" for="username">اسم المستخدم</label>
+        <span class="input-wrap">
+          <svg class="icon input-icon" aria-hidden="true"><use href="#i-user"/></svg>
+          <input id="username" class="input with-icon" type="text" autocomplete="username"
+                 dir="ltr" autofocus required>
+        </span>
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="password">كلمة المرور</label>
+        <span class="input-wrap">
+          <svg class="icon input-icon" aria-hidden="true"><use href="#i-lock"/></svg>
+          <input id="password" class="input with-icon with-action" type="password"
+                 autocomplete="current-password" dir="ltr" required>
+          <button type="button" class="input-action" data-toggle-password="password"
+                  aria-label="إظهار كلمة المرور" title="إظهار كلمة المرور">
+            <svg class="icon" aria-hidden="true"><use href="#i-eye"/></svg>
+          </button>
+        </span>
+      </div>
+
+      <p id="login-error" class="alert error" role="alert" hidden></p>
+
+      <button id="login-btn" type="submit" class="btn primary block lg">
+        <span class="btn-label">دخول</span>
+      </button>
+    </form>
+  </section>
+  <p class="login-footer">© فريق إسناد (Isnad)</p>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', path='js/login.js').path }}"></script>
+{% endblock %}

@@ -1,0 +1,533 @@
+{
+	"info": {
+		"_postman_id": "ccb28bf7-349a-5484-85fd-0e51372892b5",
+		"name": "Isnad — Database Tests",
+		"description": "Tests for the Isnad database service (/api/v1). Select the 'Isnad' environment, fill base_url and site_key, then run folder A in order. The chat-model tests live in the Isnad_app repository.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"auth": {
+		"type": "apikey",
+		"apikey": [
+			{
+				"key": "key",
+				"value": "X-API-Key",
+				"type": "string"
+			},
+			{
+				"key": "value",
+				"value": "{{site_key}}",
+				"type": "string"
+			},
+			{
+				"key": "in",
+				"value": "header",
+				"type": "string"
+			}
+		]
+	},
+	"item": [
+		{
+			"name": "A — الاختبار الأساسي (بالترتيب)",
+			"item": [
+				{
+					"name": "1 — فحص الخدمة",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/health",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"health"
+							]
+						},
+						"description": "Is the database service online? No key needed."
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"الخدمة تعمل (200)\", () => pm.response.to.have.status(200));",
+									"pm.test(\"الرد {status: ok}\", () => pm.expect(pm.response.json().status).to.eql(\"ok\"));"
+								]
+							}
+						}
+					],
+					"response": [],
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					}
+				},
+				{
+					"name": "2 — إعدادات الموقع",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/site-config",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"site-config"
+							]
+						},
+						"description": "Checks SITE_API_KEY and returns the controls set in the dashboard."
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"المفتاح مقبول (200)\", () => pm.response.to.have.status(200));",
+									"const c = pm.response.json();",
+									"pm.test(\"فيها إعدادات التحكم\", () => pm.expect(c).to.have.keys(",
+									"  \"maintenance_mode\", \"maintenance_message\", \"search_enabled\", \"chat_enabled\", \"announcement\", \"main_site_url\"));",
+									"console.log(\"إعدادات الموقع:\", JSON.stringify(c, null, 2));"
+								]
+							}
+						}
+					],
+					"response": [],
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					}
+				},
+				{
+					"name": "3 — البحث في المصادر",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": \"{{query}}\",\n  \"top_k\": 5\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/search",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"search"
+							]
+						},
+						"description": "Finds the passages closest to {{query}}."
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"البحث نجح (200)\", () => pm.response.to.have.status(200));",
+									"const body = pm.response.json();",
+									"const matches = body.matches || [];",
+									"pm.test(\"رجعت نتائج من المصادر\", () => pm.expect(matches, \"القاعدة فارغة أو الملفات قيد المعالجة\").to.not.be.empty);",
+									"",
+									"// Print the results in a readable way (Postman Console, bottom-left)",
+									"console.log(`===== نتائج البحث عن: ${pm.environment.get(\"query\")} =====`);",
+									"matches.forEach((m, i) => console.log(",
+									"  `${i + 1}) التشابه ${m.similarity} | المصدر: ${m.source}${m.hukm ? \" | الحكم: \" + m.hukm : \"\"}\\n   ${m.text}`));",
+									"",
+									"// Only when running with a CSV file in the Collection Runner",
+									"if (pm.iterationData.has(\"expected_source\")) {",
+									"  const expected = pm.iterationData.get(\"expected_source\");",
+									"  const top = matches[0];",
+									"  const minSim = Number(pm.iterationData.get(\"min_similarity\") || 0);",
+									"  if (expected) {",
+									"    pm.test(`أعلى نتيجة من المصدر المتوقع: ${expected}`, () => pm.expect(top && top.source).to.include(expected));",
+									"    pm.test(`التشابه لا يقل عن ${minSim}`, () => pm.expect(top ? top.similarity : 0).to.be.at.least(minSim));",
+									"  } else {",
+									"    pm.test(\"لا يوجد تطابق قوي (أقل من 0.3)\", () => pm.expect(top ? top.similarity : 0).to.be.below(0.3));",
+									"  }",
+									"}"
+								]
+							}
+						}
+					],
+					"response": [],
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					}
+				}
+			]
+		},
+		{
+			"name": "B — اختبارات الأخطاء (يجب أن تُرفض)",
+			"item": [
+				{
+					"name": "مفتاح خاطئ",
+					"request": {
+						"auth": {
+							"type": "apikey",
+							"apikey": [
+								{
+									"key": "key",
+									"value": "X-API-Key",
+									"type": "string"
+								},
+								{
+									"key": "value",
+									"value": "wrong-key",
+									"type": "string"
+								},
+								{
+									"key": "in",
+									"value": "header",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": \"اختبار\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/search",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"search"
+							]
+						},
+						"description": ""
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"مرفوض بدون المفتاح الصحيح (401)\", () => pm.response.to.have.status(401));"
+								]
+							}
+						}
+					],
+					"response": [],
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					}
+				},
+				{
+					"name": "بدون مفتاح",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/site-config",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"site-config"
+							]
+						},
+						"description": ""
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"مرفوض بدون المفتاح الصحيح (401)\", () => pm.response.to.have.status(401));"
+								]
+							}
+						}
+					],
+					"response": [],
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					}
+				},
+				{
+					"name": "نص فارغ",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": \"   \"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/search",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"search"
+							]
+						},
+						"description": ""
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"مرفوض لأن المدخلات غير صحيحة (422)\", () => pm.response.to.have.status(422));"
+								]
+							}
+						}
+					],
+					"response": [],
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					}
+				},
+				{
+					"name": "نوع حدث غير صحيح",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"type\": \"xyz\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/events",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"events"
+							]
+						},
+						"description": ""
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"مرفوض لأن المدخلات غير صحيحة (422)\", () => pm.response.to.have.status(422));"
+								]
+							}
+						}
+					],
+					"response": [],
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					}
+				}
+			]
+		},
+		{
+			"name": "C — الإحصائيات (تظهر في لوحة قاعدة البيانات)",
+			"item": [
+				{
+					"name": "تسجيل زيارة",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"type\": \"visit\",\n  \"visitor_id\": \"postman-test\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/events",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"events"
+							]
+						},
+						"description": ""
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"سُجّل الحدث (204)\", () => pm.response.to.have.status(204));"
+								]
+							}
+						}
+					],
+					"response": [],
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					}
+				},
+				{
+					"name": "تسجيل بحث",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"type\": \"search\",\n  \"visitor_id\": \"postman-test\",\n  \"query\": \"{{query}}\",\n  \"result\": \"verified\",\n  \"latency_ms\": 500\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/events",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"events"
+							]
+						},
+						"description": ""
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"سُجّل الحدث (204)\", () => pm.response.to.have.status(204));"
+								]
+							}
+						}
+					],
+					"response": [],
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					}
+				},
+				{
+					"name": "تسجيل سؤال حوار",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"type\": \"chat\",\n  \"visitor_id\": \"postman-test\",\n  \"query\": \"{{question}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/events",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"events"
+							]
+						},
+						"description": ""
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"سُجّل الحدث (204)\", () => pm.response.to.have.status(204));"
+								]
+							}
+						}
+					],
+					"response": [],
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					}
+				}
+			]
+		}
+	]
+}

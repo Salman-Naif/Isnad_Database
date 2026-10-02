@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Environment and secrets
+.env
+*.env
+!.env.example
+
+# Vector database (built locally, not committed)
+chroma_db/*
+!chroma_db/.gitkeep
+
+# Usage log database
+*.db
+*.sqlite
+*.sqlite3
+
+# Raw and processed data (large, built locally)
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+
+# Locally downloaded models
+.cache/
+/models/
+
+# Editor and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Tests and coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local tools
+.claude/
+.ruff_cache/
+coverage.xml

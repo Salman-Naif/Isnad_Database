@@ -1,0 +1,75 @@
+# Tool settings for the Isnad database service (the app itself is run with uvicorn, see README).
+
+[project]
+name = "isnad-database"
+version = "0.2.0"
+description = "Isnad database service: approved hadith sources, dashboard and the website API"
+requires-python = ">=3.11,<3.12"
+
+# --- Tests: pytest -m unit | integration | api | security | system ---
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+markers = [
+    "unit: one function or class on its own, no database or network",
+    "integration: several components together (SQLite, ChromaDB, file storage, pipeline)",
+    "api: HTTP endpoints — status codes, response bodies and input validation",
+    "security: access control, sessions, headers, injection, uploads and secrets",
+    "system: the real server started as a process and used over HTTP, end to end",
+]
+filterwarnings = [
+    "error::DeprecationWarning:app",  # our own code must not use deprecated APIs
+    # Starlette's TestClient suggests its httpx fork; the tests keep the standard httpx.
+    "ignore:Using `httpx` with `starlette.testclient` is deprecated",
+    # chromadb 0.6.3 reads a pydantic field list the pre-2.11 way; harmless until pydantic 3.
+    "ignore:Accessing the 'model_fields' attribute on the instance is deprecated:DeprecationWarning:chromadb",
+]
+
+# --- Coverage: pytest --cov ---
+[tool.coverage.run]
+source = ["app", "scripts"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+fail_under = 90
+exclude_also = ["if __name__ == .__main__.:", "raise AssertionError\\(\"unreachable\"\\)"]
+
+# --- Lint: ruff check . ---
+[tool.ruff]
+target-version = "py311"
+line-length = 110
+extend-exclude = ["chroma_db", "data"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W", "F",  # pycodestyle, pyflakes
+    "I",            # import order
+    "B",            # bugbear: likely bugs
+    "UP",           # modern Python syntax
+    "SIM", "C4", "PIE", "RET",  # simpler code
+    "S",            # security (bandit rules)
+    "RUF",          # ruff-specific
+    "PT",           # pytest style
+]
+ignore = [
+    "E501",    # long lines: the formatter's limit is a guide, Arabic strings are left whole
+    "RUF001", "RUF002", "RUF003",  # Arabic letters look like Latin ones to this rule
+    "PT018",   # `assert a and b` reads fine in these tests
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S105", "S106", "S108", "S311"]  # asserts, test passwords, temp paths, random
+"scripts/**" = ["T201"]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI's dependency markers are meant to be used as default arguments.
+extend-immutable-calls = [
+    "fastapi.Depends", "fastapi.File", "fastapi.Form", "fastapi.Query",
+    "fastapi.Header", "fastapi.Body", "fastapi.Cookie", "fastapi.Path",
+]
+
+# --- Security scan: bandit -c pyproject.toml -r app scripts ---
+[tool.bandit]
+exclude_dirs = ["tests", ".venv"]

@@ -1,0 +1,34 @@
+.git
+.gitignore
+.venv
+venv
+env
+__pycache__
+*.py[cod]
+
+# Secrets — passed via Railway Variables, never baked into the image
+.env
+*.env
+
+chroma_db/
+data/raw/*
+data/processed/*
+*.db
+*.sqlite
+*.sqlite3
+.cache/
+/models/
+.pytest_cache
+.coverage
+htmlcov
+.vscode/
+.idea/
+docs/
+tests/
+README.md
+
+# Development only — not needed at runtime
+.github/
+.ruff_cache/
+requirements-dev.txt
+pyproject.toml
