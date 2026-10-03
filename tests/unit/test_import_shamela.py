@@ -68,3 +68,25 @@ def test_a_number_printed_twice_keeps_both_hadiths():
     twice = [*PAGES, '\r٢٠ - حَدَّثَنَا <a href="inr://man-9">فُلَانٌ</a> <hadeeth-2>«نص آخر»<hadeeth>']
     found = shamela.unique_ids([shamela.to_record(h, BOOK, "", "") for h in shamela.split_hadiths(twice)])
     assert [r.id for r in found].count("1681-20") == 1 and "1681-20-b" in [r.id for r in found]
+
+
+def test_muslims_two_numbers_and_footnote_marks():
+    pages = ["\r١٢٨ - (٧٤) حَدَّثَنَا <a href=\"inr://man-1\">قُتَيْبَةُ</a> عَنْ <a href=\"inr://man-2\">أَنَسٍ</a> (١) قَالَ: "
+             "<hadeeth-1>«لَا يُؤْمِنُ أَحَدُكُمْ حَتَّى يُحِبَّ لِأَخِيهِ مَا يُحِبُّ لِنَفْسِهِ» (٢).<hadeeth>"]
+    [record] = [shamela.to_record(h, BOOK, "", "") for h in shamela.split_hadiths(pages)]
+    assert record.id == "1681-128-74"
+    assert "(" not in record.text and "٧٤" not in record.text
+    assert record.text.startswith("حَدَّثَنَا قُتَيْبَةُ عَنْ أَنَسٍ قَالَ")
+
+
+def test_the_editors_introduction_is_left_out(monkeypatch):
+    monkeypatch.setattr(shamela, "MIN_BODY_RUN", 3)  # a real book's body runs far longer
+    intro = ["\r١ - الجهدُ التوثيقيُّ الجديد للمسند ومقابلة الأصول\r٢ - ضبطُ النصِّ ضبطاً يقترب من التمام"]
+    first = ["\r١ - حَدَّثَنَا <a href=\"inr://man-1\">الْحُمَيْدِيُّ</a> عَنْ <a href=\"inr://man-2\">سُفْيَانَ</a> "
+             "<hadeeth-1>«نص»<hadeeth>"]
+    found = [shamela.to_record(h, BOOK, "", "") for h in shamela.split_hadiths(intro + first + PAGES)]
+    assert [r.id for r in found] == ["1681-1", "1681-20", "1681-408-409", "1681-410"]
+
+
+def test_an_unknown_honorific_glyph_is_never_shown_raw():
+    assert "﵋" not in shamela.plain("قال فلان ﵋ ثم")

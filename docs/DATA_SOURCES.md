@@ -76,9 +76,27 @@ gave it.
 
 - **Program:** [المكتبة الشاملة](https://shamela.ws), desktop edition, installed by the team; the
   reference pack names it for the printed editions of the books of the Sunnah.
-- **Read by:** `scripts/import_shamela.py` (see the README). Editions tried: «صحيح البخاري - ط
-  السلطانية» (book 1681). Each record keeps the edition's hadith number in its id
-  (`1681-20`), its chapter, its chain as Shamela links its narrators, and its matn.
+- **Read by:** `scripts/import_shamela.py` (see the README). Each record keeps the edition's
+  hadith number in its id (`1681-20`), its chapter, its chain as Shamela links its narrators
+  (where the edition links them), and its matn (where the edition marks it).
+- **Editions converted** (one per book; 2026-10-03):
+
+  | Book | Shamela edition (id) | Hadiths | With the edition's chain | With its matn marked |
+  | --- | --- | --- | --- | --- |
+  | صحيح البخاري | ط السلطانية (1681) | 7,330 | 7,171 | 7,065 |
+  | صحيح مسلم | ط التركية (711) | 7,620 | 7,613 | 6,038 |
+  | سنن أبي داود | ت محيي الدين عبد الحميد (1726) | 5,284 | — | — |
+  | جامع الترمذي | ت بشار (7895) | 3,948 | 3,933 | 3,852 |
+  | سنن النسائي | ط المصرية (829) | 5,764 | 5,762 | 5,674 |
+  | سنن ابن ماجه | ت عبد الباقي (1198) | 4,343 | — | — |
+  | موطأ الإمام مالك | رواية يحيى، ت الأعظمي (28107) | 2,079 | 1,614 | 849 |
+  | مسند الإمام أحمد بن حنبل | ط الرسالة (25794) | 26,689 | — | — |
+  | سنن الدارمي | not installed yet | — | — | — |
+
+  Where an edition doesn't link its narrators («—»), the database reads the chain from the
+  wording, as for the datasets. Editors' introductions are left out (the import starts at the
+  book's own numbering); for Muslim this also leaves out the 9 entries of Muslim's own preface.
+  Embedding all eight: 12.3 M tokens ≈ $0.25 (measured with `scripts/import_hadiths.py --estimate`).
 - **Taken:** the hadith texts, the narrator links and the chapter titles. **Not taken:** the
   footnotes (editors' notes, variant readings, takhrij and gradings).
 - **Terms:** Shamela's [terms](https://shamela.ws/page/terms) (checked 2026-10-03) say that rights

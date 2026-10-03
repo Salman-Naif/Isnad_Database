@@ -60,13 +60,21 @@ _HONORIFICS = {
     "\ufd4a": "عليه الصلاة والسلام", "\ufd4d": "عليها السلام", "\ufd4e": "تبارك وتعالى",
     "\ufdff": "عز وجل", "\ufdfd": "بسم الله الرحمن الرحيم",
 }
-# A hadith starts a line with its number(s): «٢٠ - » or «٤٠٨ - ٤٠٩ - ». Lines end in \n or \r.
-_START = re.compile(r"(?:^|[\r\n])[ \t]*((?:[٠-٩]+[ \t]*-[ \t]*)+)")
+_HONORIFICS["﵏"] = "رحمهم الله"
+_UNMAPPED_LIGATURE = re.compile(r"[﵀-﵏]")  # any other honorific glyph: dropped, never shown raw
+# Words of transmission: the first hadith of a book has one. Numbered points before it are the
+# editors' introduction (Musnad Ahmad ط الرسالة numbers its own), which is not taken.
+MIN_BODY_RUN = 50  # numbers rising in a row, from a «1», that mark the hadiths (not an introduction)
+_TRANSMISSION = re.compile(r"(?:^|\s)و?(?:حدثنا|حدثني|اخبرنا|اخبرني|انبانا)(?:\s|$)")
+# A hadith starts a line with its number(s): «٢٠ - », «٤٠٨ - ٤٠٩ - », or Muslim's «١٢٨ - (٧٤) »
+# (a running number, then Abd al-Baqi's). Lines end in \n or \r.
+_START = re.compile(r"(?:^|[\r\n])[ \t]*((?:[٠-٩]+[ \t]*-[ \t]*)+(?:\([٠-٩]+\)[ \t]*)?)")
 _TITLE = re.compile(r"<span data-type=['\"]title['\"][^>]*>(.*?)</span>", re.S)
 _NARRATOR = re.compile(r"<a href=\"inr://man-(\d+)\">(.*?)</a>", re.S)
 _MATN = re.compile(r"<hadeeth-\d+>(.*?)<hadeeth>", re.S)
 _TAG = re.compile(r"<[^>]+>")
 _PAGE_MARK = re.compile(r"⦗[٠-٩0-9]+⦘")  # the printed edition's page numbers, inside the text
+_FOOTNOTE_MARK = re.compile(r"\s*\([٠-٩0-9]{1,3}\)")  # «(١)»: a pointer to a footnote, not taken
 # A number inside a narration: Bukhari splits one narration under several numbers («… ٣٠٠ - وكان»).
 _INLINE_NUMBER = re.compile(r"(?<=\s)[٠-٩]+[ \t]*-[ \t]+")
 _DIACRITICS = re.compile(r"[\u0610-\u061a\u064b-\u065f\u0670\u0640]")
@@ -93,8 +101,10 @@ def plain(markup: str) -> str:
     """Readable text: no tags, page marks or inline numbers; honorifics spelled out."""
     text = _TAG.sub("", markup)
     text = _PAGE_MARK.sub("", text)
+    text = _FOOTNOTE_MARK.sub("", text)
     for glyph, words in _HONORIFICS.items():
         text = text.replace(glyph, f" {words} ")
+    text = _UNMAPPED_LIGATURE.sub("", text)
     text = _INLINE_NUMBER.sub("", text)
     return " ".join(text.replace("\r", " ").split())
 
@@ -166,8 +176,28 @@ def split_hadiths(pages: list[str]) -> list[Hadith]:
         numbers = [int(n.translate(_DIGITS)) for n in re.findall(r"[٠-٩]+", match.group(1))]
         raw = text[match.end(1):end]
         hadiths.append(Hadith(numbers, raw, bab or kitab))
+    hadiths = without_front_matter(hadiths)
     for hadith in hadiths:
         hadith.narrators = chain_of(hadith.raw)
+    return hadiths
+
+
+def without_front_matter(hadiths: list[Hadith]) -> list[Hadith]:
+    """From the «1» that starts the book's own numbering: the first place numbered 1 that is a
+    narration and is followed by a long run of rising numbers. An editors' introduction numbers
+    short lists of its own (Musnad Ahmad ط الرسالة; it even quotes chains, «حدثنا سفيان…»); the
+    hadiths run on for hundreds. (Muslim ط التركية starts its running number again in every
+    كتاب, so the first long run is the right one, not the longest.)"""
+    for i, hadith in enumerate(hadiths):
+        if hadith.numbers[0] != 1 or not _TRANSMISSION.search(_bare(plain(hadith.raw))):
+            continue
+        run, last = 1, 1
+        for following in hadiths[i + 1:i + MIN_BODY_RUN]:
+            if following.numbers[0] < last:
+                break
+            run, last = run + 1, following.numbers[0]
+        if run >= MIN_BODY_RUN:
+            return hadiths[i:]
     return hadiths
 
 
