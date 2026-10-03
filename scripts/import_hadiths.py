@@ -1,5 +1,5 @@
 """
-Import hadith collections from JSON or CSV files (e.g. the public sunnah.com datasets).
+Import hadith collections from JSON or CSV files — and measure the cost of indexing them.
 
     # Convert to Isnad's format (data/structured/<name>.json), ready to upload from the dashboard:
     python scripts/import_hadiths.py bukhari.json "Sahih Bukhari.csv"
@@ -15,8 +15,8 @@ Import hadith collections from JSON or CSV files (e.g. the public sunnah.com dat
     python scripts/import_hadiths.py bukhari.json --index
 
 Folders are searched for .json and .csv files. Formats: see app/services/hadith_import.py.
-Built and tested on https://github.com/abdelrahmaan/Hadith-Data-Sets (CSV) and
-https://github.com/AhmedBaset/hadith-json (JSON) — credits in docs/DATA_SOURCES.md.
+Isnad's own sources are the Shamela editions: convert them with scripts/import_shamela.py,
+then measure and index the resulting files here (docs/DATA_SOURCES.md).
 """
 
 import argparse

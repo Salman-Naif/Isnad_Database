@@ -1,7 +1,7 @@
 """
 Chains of narration (isnad) read from a hadith's own text, and drawn as a tree.
 
-The public datasets keep the chain inside the narration: «حدثنا قتيبة، حدثنا أبو عوانة، عن
+Editions keep the chain inside the narration: «حدثنا قتيبة، حدثنا أبو عوانة، عن
 سماك، ح وحدثنا هناد، حدثنا وكيع، عن إسرائيل، عن سماك، عن مصعب بن سعد، عن ابن عمر، عن النبي
 صلى الله عليه وسلم قال …». The chain is the part before the Prophet ﷺ is named; narrators are
 separated by the words of transmission (حدثنا، أخبرنا، عن، سمعت، قال، أن …); «ح» starts another

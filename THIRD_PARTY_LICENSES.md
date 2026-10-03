@@ -68,12 +68,11 @@ Uploaded texts, scanned pages and search queries are sent to OpenRouter to be pr
 
 ## Data
 
-The hadith collections are not part of this repository; the team uploads them to the running
-service. Their origin, licenses and how they are used are in
-[`docs/DATA_SOURCES.md`](docs/DATA_SOURCES.md). In short: the texts of the hadiths are classical
-works in the public domain; the two datasets that digitised them (Hadith-Data-Sets, hadith-json)
-publish **no license**, so the files are not redistributed here, they are credited wherever used,
-and only short excerpts of classical text appear in the tests.
+The hadith texts come from the printed editions in المكتبة الشاملة, converted on the team's
+machine and uploaded to the running service; they are not part of this repository. Rulings are
+shown only as the editions record them, with their authors (al-Tirmidhi, al-Albani, the editors
+of Musnad Ahmad ط الرسالة). Editions, rights and credits: [`docs/DATA_SOURCES.md`](docs/DATA_SOURCES.md).
+الدرر السنية (dorar.net) is the reference results are checked against; nothing is copied from it.
 
 ## Icons
 

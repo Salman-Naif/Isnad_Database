@@ -7,7 +7,8 @@ Two kinds of input, and the difference between them is fundamental:
    They are chunked and indexed, but **without ruling or sanad** because they are unstructured.
 
 2) ingest_structured()  — hadith collections: JSON or CSV, one record per hadith
-   (Isnad's own JSON format, sunnah.com JSON, or CSV — see app/services/hadith_import.py).
+   (Isnad's own JSON format — the Shamela editions are converted to it — a JSON collection per
+   book, or CSV; see app/services/hadith_import.py).
    Each record carries: text, ruling, who ruled on it, sanad, topic, source.
    Only this path feeds the "ruling attribution" and "narrator list" features.
    A hadith gets two vectors when its text can be told apart from its chain of narrators:

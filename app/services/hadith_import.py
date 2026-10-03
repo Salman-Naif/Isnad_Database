@@ -5,16 +5,16 @@ Formats read (detected from the content, not the file name):
 
   - Isnad's own JSON: an array of records like docs/hadith_format.example.json
     (id, text, hukm, mohaddith, sanad, topic, source).
-  - hadith-json / Hadith-JSON-Engine (sunnah.com data, github.com/AhmedBaset/hadith-json):
-    {"metadata": {...}, "chapters": [...], "hadiths": [...]}, one book per file
-    (or one chapter per file in their by_chapter layout). Each hadith's "arabic" text is used;
-    its chapter becomes the topic; scholars' grades ("english.grades", in the Engine edition)
-    become the ruling and the scholar who gave it.
-  - CSV, one hadith per row (github.com/abdelrahmaan/Hadith-Data-Sets: one column headed by
-    the book's name; github.com/mhashim6/Open-Hadith-Data: number, text). The hadith is the
-    column with the longest texts; a column of numbers, if any, gives each hadith its number.
+  - A collection per book: {"metadata": {...}, "chapters": [...], "hadiths": [...]} (or one
+    chapter per file). Each hadith's "arabic" text is used; its chapter becomes the topic;
+    scholars' grades, when the file has them ("english.grades"), become the ruling and the
+    scholar who gave it.
+  - CSV, one hadith per row (one column headed by the book's name, or number and text). The
+    hadith is the column with the longest texts; a column of numbers, if any, gives each
+    hadith its number.
 
-Credits and the exact files this was tested on: docs/DATA_SOURCES.md.
+Isnad's own sources (the Shamela editions) are converted by scripts/import_shamela.py into
+Isnad's JSON format: docs/DATA_SOURCES.md.
 
 Rulings are only ever taken from the file itself, or from a ruling the team sets explicitly for
 a whole book (`default_hukm`) — never guessed.
@@ -40,7 +40,7 @@ COLLECTION_EXTENSIONS = {".json", ".csv"}
 _records_adapter = TypeAdapter(list[HadithRecord])
 _ARABIC = re.compile(r"[؀-ۿ]")
 
-# Grades as sunnah.com writes them → the Arabic term. Checked in order: "hasan sahih"
+# Grades as collections write them in English → the Arabic term. Checked in order: "hasan sahih"
 # before "hasan" and "sahih". A grade not listed here is kept exactly as written.
 _GRADE_TERMS = [
     ("hasan sahih", "حسن صحيح"), ("sahih", "صحيح"), ("hasan", "حسن"),

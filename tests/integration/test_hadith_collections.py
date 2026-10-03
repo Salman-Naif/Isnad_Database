@@ -1,8 +1,8 @@
 """Integration tests: hadith collections (JSON or CSV) through the upload pipeline and the
 import script, into a real vector store.
 
-Samples in the formats of https://github.com/AhmedBaset/hadith-json (JSON) and
-https://github.com/abdelrahmaan/Hadith-Data-Sets (CSV) — see docs/DATA_SOURCES.md.
+Samples in the two formats the importer reads: a JSON collection per book, and CSV with one
+hadith per row.
 """
 
 import json
