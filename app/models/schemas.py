@@ -29,6 +29,9 @@ class HadithRecord(BaseModel):
     sanad: list[Narrator] = Field(default_factory=list)
     topic: str = ""
     source: str = ""
+    # The hadith's own words without its chain, when the edition marks them (Shamela does);
+    # otherwise they are found by app/services/hadith_import.matn_of.
+    matn: str = ""
 
 
 # --- Admin accounts ---

@@ -111,6 +111,14 @@ MATN_MIN_WORDS = 8
 MATN_MAX_SHARE = 0.85  # a "matn" nearly as long as the whole text adds nothing
 
 
+def record_matn(record: HadithRecord) -> str:
+    """The matn to index separately: the one the edition marks, else the one found in the text
+    — either way only when long enough to stand on its own."""
+    if record.matn:
+        return record.matn if len(record.matn.split()) >= MATN_MIN_WORDS else ""
+    return matn_of(record.text)
+
+
 def matn_of(text: str) -> str:
     """The hadith's text without its chain of narrators, or "" when it can't be told apart
     (no mention of the Prophet ﷺ, e.g. a companion's saying, or almost no chain at all)."""

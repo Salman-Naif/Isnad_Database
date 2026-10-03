@@ -38,6 +38,14 @@ from each package's metadata (checked 2026-10-02).
 | Bandit 1.9.4, pip-audit 2.10.1 | Apache-2.0 |
 | [Newman](https://github.com/postmanlabs/newman) 6 (run through `npx` by the system tests) | Apache-2.0 |
 
+## Used on the team's machine to convert Shamela books (not in the image, not redistributed)
+
+| Component | License | Used for |
+| --- | --- | --- |
+| [المكتبة الشاملة](https://shamela.ws) desktop program and its books | [Shamela's terms](https://shamela.ws/page/terms); rights in editions stay with their holders | Source of edited printed editions (see `docs/DATA_SOURCES.md`) |
+| [Apache Lucene](https://lucene.apache.org) 10.4 (the jars installed with Shamela) | Apache-2.0 | Reading Shamela's page index (`scripts/shamela/ShamelaExport.java`) |
+| A JDK 21+ (e.g. Oracle or OpenJDK) | the JDK's license | Compiling and running the exporter |
+
 ## In the Docker image
 
 | Component | License | Used for |

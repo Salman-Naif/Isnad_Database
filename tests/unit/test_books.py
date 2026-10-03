@@ -18,12 +18,21 @@ from app.services.isnad_tree import book_author
     ("سنن الترمذي", "جامع الترمذي"), ("مسند الدارمي", "سنن الدارمي"), ("سنن ابى داود", "سنن أبي داود"),
     # File names and references
     ("صحيح مسلم.json", "صحيح مسلم"), ("صحيح مسلم، 12", "صحيح مسلم"),
+    # Shamela's book names: title, then the edition
+    ("صحيح البخاري - ط السلطانية", "صحيح البخاري"), ("سنن الترمذي - ت بشار", "جامع الترمذي"),
+    ("موطأ مالك - رواية يحيى - ت الأعظمي", "موطأ الإمام مالك"), ("مسند أحمد - ط الرسالة", "مسند الإمام أحمد بن حنبل"),
+    ("سنن أبي داود - ت الأرنؤوط", "سنن أبي داود"),
 ])
 def test_every_name_gives_the_published_title(name, title):
     assert books.title(name) == title
 
 
-@pytest.mark.parametrize("name", ["كتاب الصلاة.pdf", "رياض الصالحين", "", "مذكرة"])
+@pytest.mark.parametrize("name", [
+    "كتاب الصلاة.pdf", "رياض الصالحين", "", "مذكرة",
+    # Books that name one of the nine in their title, but are other books
+    "ضعيف سنن الترمذي", "صحيح سنن النسائي", "مختصر صحيح مسلم للمنذري ت الألباني",
+    "الجامع الصحيح للسنن والمسانيد", "بر الوالدين - البخاري - ت مكي",
+])
 def test_other_names_are_left_alone(name):
     assert books.title(name) == name
     assert books.find(name) is None
