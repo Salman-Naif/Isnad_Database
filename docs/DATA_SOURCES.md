@@ -72,6 +72,23 @@ A corrected edition with scholars' grades, in the same format:
 its `english.grades` (e.g. Al-Albani: Sahih) become the ruling, in Arabic, and the scholar who
 gave it.
 
+## المكتبة الشاملة — edited printed editions
+
+- **Program:** [المكتبة الشاملة](https://shamela.ws), desktop edition, installed by the team; the
+  reference pack names it for the printed editions of the books of the Sunnah.
+- **Read by:** `scripts/import_shamela.py` (see the README). Editions tried: «صحيح البخاري - ط
+  السلطانية» (book 1681). Each record keeps the edition's hadith number in its id
+  (`1681-20`), its chapter, its chain as Shamela links its narrators, and its matn.
+- **Taken:** the hadith texts, the narrator links and the chapter titles. **Not taken:** the
+  footnotes (editors' notes, variant readings, takhrij and gradings).
+- **Terms:** Shamela's [terms](https://shamela.ws/page/terms) (checked 2026-10-03) say that rights
+  in books and editions stay with their holders, and grant no right to reuse content beyond the
+  law or the holder's permission. The hadith texts are classical and in the public domain; the
+  editions' work (verification, numbering, notes) is their editors' and publishers'. So the
+  converted files are not published in this repository, the edition is credited, and **before
+  the texts are served publicly the team should ask Shamela / the publisher for permission** —
+  or keep to editions whose text is the classical text alone.
+
 ## Rights, and what is published here
 
 - The hadith texts are classical works in the public domain. The digitisation is its authors'

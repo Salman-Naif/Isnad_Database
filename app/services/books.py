@@ -34,7 +34,7 @@ BOOKS = (
     Book("صحيح البخاري",
          "الجامع المسند الصحيح المختصر من أمور رسول الله ﷺ وسننه وأيامه",
          "الإمام أبو عبد الله محمد بن إسماعيل البخاري", "البخاري", 256,
-         ("bukhari", "bokhari", "الجامع الصحيح")),
+         ("bukhari", "bokhari")),
     Book("صحيح مسلم",
          "المسند الصحيح المختصر بنقل العدل عن العدل إلى رسول الله ﷺ",
          "الإمام أبو الحسين مسلم بن الحجاج القشيري النيسابوري", "مسلم", 261,
@@ -75,8 +75,10 @@ _BY_KEY = {_key(name): book for book in BOOKS for name in (book.title, *book.ali
 
 
 def find(name: str) -> Book | None:
-    """The book a name refers to: its title, an alias, or a name that contains one
-    («Sahih Bukhari Without_Tashkel», «صحيح البخاري، 1»)."""
+    """The book a name refers to: its title or an alias, the name of a dataset that contains an
+    English one («Sahih Bukhari Without_Tashkel»), or an Arabic name that starts with one
+    («صحيح البخاري، 1», «سنن الترمذي - ت بشار»). An Arabic name that only contains a title is
+    another book: «ضعيف سنن الترمذي», «صحيح سنن النسائي» (al-Albani's), «مختصر صحيح مسلم»."""
     if not name:
         return None
     key = _key(name)
@@ -84,7 +86,7 @@ def find(name: str) -> Book | None:
         return _BY_KEY[key]
     # Longest names first, so «مسند الدارمي» is not taken for «المسند» (Ahmad).
     for alias in sorted(_BY_KEY, key=len, reverse=True):
-        if alias in key:
+        if (alias in key) if alias.isascii() else key.startswith(alias):
             return _BY_KEY[alias]
     return None
 

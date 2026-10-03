@@ -302,6 +302,28 @@ come from the file (the scholars' grades in the Engine edition, shown in Arabic 
 ضعيف… with the scholar's name) or from `--hukm`. Without a ruling, a search that matches the text
 shows «found in the sources», not «verified».
 
+### Hadith books from المكتبة الشاملة (Shamela)
+
+The edited printed editions in an installed [Shamela](https://shamela.ws) desktop library — the
+reference platform the challenge's reference pack names for the books of the Sunnah — can be
+converted to Isnad's format with `scripts/import_shamela.py` (needs a JDK 21+, `javac`):
+
+```
+python scripts/import_shamela.py --list            # the hadith books installed (id, name)
+python scripts/import_shamela.py 1681              # صحيح البخاري - ط السلطانية
+python scripts/import_hadiths.py "data/structured/صحيح البخاري - ط السلطانية.json" --estimate
+```
+
+Shamela keeps each book's pages in a Lucene index; they are read with Shamela's own Lucene jars
+(`scripts/shamela/ShamelaExport.java`). Its markup gives each hadith's number, **every narrator
+of the chain as linked to Shamela's narrators database** (so the sanad is the edition's, not
+read from the wording), the **matn** exactly as the edition marks it, and the chapter. Only the
+hadith texts are taken — never the footnotes — and no ruling is added (`--hukm` for the team's).
+
+Measured on صحيح البخاري ط السلطانية: 11,208 pages → 7,330 hadiths in 42 s, 7,171 with their
+chain and 7,065 with their matn marked; embedding them costs $0.037. The files are written to
+`data/structured/`, which is never committed. Rights: see [docs/DATA_SOURCES.md](docs/DATA_SOURCES.md).
+
 ### Disk space
 
 Everything lives on the Volume (`/app/chroma_db`): the vectors (ChromaDB), the texts with their

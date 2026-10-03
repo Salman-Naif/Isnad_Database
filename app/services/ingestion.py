@@ -35,7 +35,7 @@ from app.models.schemas import HadithRecord
 from app.services import sanad, text_index
 from app.services.embeddings import EmbeddingService
 from app.services.extraction import ExtractionError, Progress, extract_text
-from app.services.hadith_import import COLLECTION_EXTENSIONS, matn_of, read_collection
+from app.services.hadith_import import COLLECTION_EXTENSIONS, read_collection, record_matn
 from app.services.text_processing import chunk, clean
 from app.services.vector_store import VectorStore
 
@@ -132,7 +132,7 @@ def ingest_structured(
         # The original text (with diacritics) is stored for display; the cleaned text is
         # what gets embedded, matching how queries are cleaned.
         items.append(Item(record.id, clean(record.text), record.text, {**metadata, "part": "full"}))
-        matn = matn_of(record.text)
+        matn = record_matn(record)
         if matn:
             items.append(Item(f"{record.id}{text_index.MATN_SUFFIX}", clean(matn), record.text,
                               {**metadata, "part": "matn"}))

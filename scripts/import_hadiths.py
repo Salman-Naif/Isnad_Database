@@ -38,6 +38,7 @@ from app.services.hadith_import import (  # noqa: E402
     COLLECTION_EXTENSIONS,
     Collection,
     read_collection,
+    record_matn,
     to_isnad_json,
 )
 from app.services.text_processing import clean  # noqa: E402
@@ -58,7 +59,9 @@ class Estimate:
 def embedded_texts(collection: Collection) -> list[str]:
     """Exactly what indexing sends to the embedding model."""
     limit = get_settings().embedding_max_input_chars
-    return [clean(r.text)[:limit] for r in collection.records]
+    texts = [clean(r.text)[:limit] for r in collection.records]
+    # The matn of each hadith is embedded on its own as well (app/services/ingestion.py).
+    return texts + [clean(m)[:limit] for r in collection.records if (m := record_matn(r))]
 
 
 def estimate(texts: list[str], sample_size: int = SAMPLE_SIZE, client: httpx.Client | None = None) -> Estimate:
