@@ -2,12 +2,14 @@
 
 import io
 import shutil
+from pathlib import Path
 
 import pytest
 
 from app.config import get_settings
 from app.services.extraction import ExtractionError, extract_text
 from app.services.ocr import PageResult
+from app.services.text_index import normalize
 
 ARABIC = "إنما الأعمال بالنيات"
 
@@ -54,18 +56,41 @@ def _tesseract_available() -> bool:
     return bool(get_settings().tesseract_cmd or shutil.which("tesseract"))
 
 
-@pytest.mark.skipif(not _tesseract_available(), reason="Tesseract is not installed")
-def test_scanned_image_ocr():
-    from PIL import Image, ImageDraw
+# Fonts with Arabic glyphs (fonts-noto-core on Linux, as in CI and Docker; Windows; macOS).
+_ARABIC_FONTS = [
+    "/usr/share/fonts/truetype/noto/NotoNaskhArabic-Regular.ttf",
+    "/usr/share/fonts/truetype/noto/NotoSansArabic-Regular.ttf",
+    "C:/Windows/Fonts/tahoma.ttf",
+    "/System/Library/Fonts/Supplemental/Arial.ttf",
+]
 
-    image = Image.new("RGB", (400, 80), "white")
-    ImageDraw.Draw(image).text((10, 25), "ISNAD OCR TEST", fill="black")
+
+def _arabic_font() -> str | None:
+    return next((path for path in _ARABIC_FONTS if Path(path).exists()), None)
+
+
+@pytest.mark.skipif(not _tesseract_available(), reason="Tesseract is not installed")
+@pytest.mark.skipif(_arabic_font() is None, reason="No font with Arabic glyphs")
+def test_scanned_image_ocr():
+    """A scanned Arabic line is read by Tesseract with the service's own language (ara)."""
+    import arabic_reshaper
+    from bidi.algorithm import get_display
+    from PIL import Image, ImageDraw, ImageFont, features
+
+    image = Image.new("RGB", (900, 160), "white")
+    font = ImageFont.truetype(_arabic_font(), 64)
+    draw = ImageDraw.Draw(image)
+    if features.check("raqm"):  # Pillow shapes Arabic itself
+        draw.text((30, 30), ARABIC, font=font, fill="black", direction="rtl")
+    else:  # shaped and ordered for display beforehand
+        draw.text((30, 30), get_display(arabic_reshaper.reshape(ARABIC)), font=font, fill="black")
     buf = io.BytesIO()
     image.save(buf, format="PNG")
 
     result = extract_text(buf.getvalue(), "scan.png")
     assert result.ocr_pages == 1
-    assert "ISNAD" in result.text.upper()
+    # Letter forms aside (أ/ا), as search compares them
+    assert "الاعمال" in normalize(result.text)
 
 
 # --- Garbled text layers and OCR quality ---
