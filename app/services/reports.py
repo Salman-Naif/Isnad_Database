@@ -25,6 +25,7 @@ RESULT_LABELS = {
     "found": "موجود بلا حكم",
     "distorted": "تحريف محتمل",
     "no_match": "لا تطابق",
+    "explore": "بحث بالمعنى",  # the website's «ابحث بالمعنى»: hadiths about an idea, no verdict
 }
 KIND_LABELS = {"document": "مستند", "structured_hadith": "أحاديث منظّمة"}
 
