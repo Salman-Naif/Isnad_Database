@@ -25,7 +25,9 @@ Rulings are not added: the team sets them (--hukm / --mohaddith), as for any oth
 """
 
 import argparse
+import bisect
 import glob
+import itertools
 import json
 import re
 import shutil
@@ -64,6 +66,20 @@ _HONORIFICS["﵏"] = "رحمهم الله"
 _UNMAPPED_LIGATURE = re.compile(r"[﵀-﵏]")  # any other honorific glyph: dropped, never shown raw
 # Words of transmission: the first hadith of a book has one. Numbered points before it are the
 # editors' introduction (Musnad Ahmad ط الرسالة numbers its own), which is not taken.
+# «ح» standing alone — «ح»، «(ح)»، «،ح،» — starts another chain of the same hadith.
+_TAHWIL = re.compile(r"(?:^|[^ء-ي])ح(?:[^ء-ي]|$)")
+_PROPHET_NAMED = re.compile(r"ﷺ|صلى الله عليه وسلم|رسول الله|النبي")  # matched without diacritics
+_NOTE_MARK = re.compile(r"\(([٠-٩]{1,3})\)")
+# al-Tirmidhi's words on a hadith, matched without diacritics: «هذا حديث حسن صحيح غريب».
+_TIRMIDHI_GRADE = re.compile(r"هذا حديث ((?:(?:حسن|صحيح|غريب|ضعيف|منكر|مرسل)\s?){1,3})")
+# A footnote that opens with a grading: «إسناده صحيح على شرط الشيخين»، «حسن»، «حديث صحيح، وهذا إسناد ضعيف».
+_NOTE_GRADE = re.compile(
+    r"^(?:حديث |إسناده |إسناد |صحيح|حسن|ضعيف|موضوع|منكر)[^.\n]{0,60}?(?=[،.]|\s(?:رجاله|وهذا|وأخرجه|فقد|لأن)|$)"
+)
+# Editions whose editors grade each hadith in a footnote, and how they are credited.
+GRADING_EDITORS = {25794: "شعيب الأرنؤوط وآخرون (مسند أحمد ط الرسالة)"}
+# Scholars whose rulings editions record under a code, by the code's label.
+CODED_SCHOLARS = {"حكم الألباني": "الألباني"}
 MIN_BODY_RUN = 50  # numbers rising in a row, from a «1», that mark the hadiths (not an introduction)
 _TRANSMISSION = re.compile(r"(?:^|\s)و?(?:حدثنا|حدثني|اخبرنا|اخبرني|انبانا)(?:\s|$)")
 # A hadith starts a line with its number(s): «٢٠ - », «٤٠٨ - ٤٠٩ - », or Muslim's «١٢٨ - (٧٤) »
@@ -87,6 +103,7 @@ class Book:
     id: int
     name: str
     path: Path  # its database/book/<nnn>/<id>.db
+    shorts: dict[str, str] = field(default_factory=dict)  # the edition's codes: {"0": "[حكم الألباني] :"}
 
 
 @dataclass
@@ -95,6 +112,9 @@ class Hadith:
     raw: str  # the edition's markup, from the number to the next hadith or title
     topic: str
     narrators: list[str] = field(default_factory=list)
+    notes: list[str] = field(default_factory=list)  # the footnotes its «(n)» marks point to
+    pages: tuple[int, int] = (0, 0)  # first and last page it is on
+    ruling: tuple[str, str] = ("", "")  # (ruling, scholar) from a code in the page's notes
 
 
 def plain(markup: str) -> str:
@@ -118,16 +138,23 @@ def installed_books(shamela: Path) -> list[Book]:
     master = sqlite3.connect(f"file:{shamela / 'database' / 'master.db'}?mode=ro", uri=True)
     try:
         categories = dict(master.execute("select category_id, category_name from category"))
-        rows = master.execute("select book_id, book_name, book_category from book").fetchall()
+        rows = master.execute("select book_id, book_name, book_category, meta_data from book").fetchall()
     finally:
         master.close()
     found = {int(Path(p).stem): Path(p) for p in glob.glob(str(shamela / "database" / "book" / "*" / "*.db"))}
-    return [Book(i, name, found[i]) for i, name, category in rows
+    return [Book(i, name, found[i], _shorts(meta)) for i, name, category, meta in rows
             if i in found and categories.get(category) == HADITH_CATEGORY]
 
 
-def export_pages(shamela: Path, book: Book, work: Path) -> list[str]:
-    """The book's page bodies, in the edition's order."""
+def _shorts(meta: str | None) -> dict[str, str]:
+    try:
+        return {str(k): str(v) for k, v in (json.loads(meta or "{}").get("shorts") or {}).items()}
+    except (ValueError, AttributeError):
+        return {}
+
+
+def export_pages(shamela: Path, book: Book, work: Path) -> tuple[list[str], list[str]]:
+    """The book's page bodies and footnotes, in the edition's order."""
     jars = [shamela / "app" / "lucene" / "2" / jar for jar in LUCENE_JARS]
     missing = [str(j) for j in jars if not j.exists()]
     if missing:
@@ -143,21 +170,24 @@ def export_pages(shamela: Path, book: Book, work: Path) -> list[str]:
          str(shamela / "database" / "store" / "page"), str(book.id), str(out)],
         check=True, capture_output=True,
     )
-    pages = {}
+    pages, feet = {}, {}
     for line in out.read_text(encoding="utf-8").splitlines():
         page = json.loads(line)
-        pages[page["page"]] = page["body"]
+        pages[page["page"]], feet[page["page"]] = page["body"], page["foot"]
     db = sqlite3.connect(f"file:{book.path}?mode=ro", uri=True)
     try:
         order = [row[0] for row in db.execute("select id from page order by id")]
     finally:
         db.close()
-    return [pages[i] for i in order if i in pages]
+    kept = [i for i in order if i in pages]
+    return [pages[i] for i in kept], [feet[i] for i in kept]
 
 
-def split_hadiths(pages: list[str]) -> list[Hadith]:
-    """The numbered hadiths of a book, each with the chapter it falls under."""
+def split_hadiths(pages: list[str], feet: list[str] | None = None) -> list[Hadith]:
+    """The numbered hadiths of a book, each with the chapter it falls under (and, given the
+    pages' footnotes, the notes its marks point to)."""
     text = "\n".join(pages)
+    starts = list(itertools.accumulate((len(p) + 1 for p in pages), initial=0))
     # Where every hadith starts and every title stands, in the order of the book.
     marks = [(m.start(1), "hadith", m) for m in _START.finditer(text)]
     marks += [(m.start(), "title", m) for m in _TITLE.finditer(text)]
@@ -175,11 +205,74 @@ def split_hadiths(pages: list[str]) -> list[Hadith]:
             continue
         numbers = [int(n.translate(_DIGITS)) for n in re.findall(r"[٠-٩]+", match.group(1))]
         raw = text[match.end(1):end]
-        hadiths.append(Hadith(numbers, raw, bab or kitab))
+        notes = _notes_of(text, match.end(1), end, starts, feet) if feet else []
+        span = (bisect.bisect_right(starts, match.end(1)) - 1, bisect.bisect_right(starts, max(end - 1, 0)) - 1)
+        hadiths.append(Hadith(numbers, raw, bab or kitab, notes=notes, pages=span))
     hadiths = without_front_matter(hadiths)
     for hadith in hadiths:
         hadith.narrators = chain_of(hadith.raw)
     return hadiths
+
+
+def _notes_of(text: str, start: int, end: int, starts: list[int], feet: list[str]) -> list[str]:
+    """The footnotes the «(n)» marks between start and end point to, each from its own page."""
+    notes = []
+    for mark in _NOTE_MARK.finditer(text, start, end):
+        page = bisect.bisect_right(starts, mark.start()) - 1
+        note = _footnotes(feet[page]).get(mark.group(1)) if 0 <= page < len(feet) else None
+        if note:
+            notes.append(note)
+    return notes
+
+
+def _footnotes(foot: str) -> dict[str, str]:
+    """A page's footnotes by their number: «(١) إسناده صحيح… (٢) …»."""
+    parts = re.split(r"\(([٠-٩]{1,3})\)\s*", foot or "")
+    return {parts[i]: parts[i + 1].strip() for i in range(1, len(parts) - 1, 2)}
+
+
+def coded_rulings(hadiths: list[Hadith], book: Book, feet: list[str]) -> None:
+    """Rulings an edition records under one of its codes — «[حكم الألباني] :» is «<s0>» in the
+    notes of Sunan Abi Dawud ت محيي الدين, «<s2>» in Sunan Ibn Majah ت عبد الباقي — given to
+    the hadiths of the page they stand on, in order."""
+    for code, label in book.shorts.items():
+        scholar = next((name for key, name in CODED_SCHOLARS.items() if key in label), None)
+        if not scholar:
+            continue
+        mark = re.compile(rf"<s{re.escape(code)}>\s*([^\r\n<]{{1,80}})")
+        found = [(i, m.group(1).strip(" :.،")) for i, foot in enumerate(feet) for m in mark.finditer(foot or "")]
+        taken = 0
+        for hadith in hadiths:
+            first, last = hadith.pages
+            while taken < len(found) and found[taken][0] < first:
+                taken += 1  # a ruling on a page with no hadith of its own
+            if taken < len(found) and found[taken][0] <= last and found[taken][1]:
+                hadith.ruling = (found[taken][1], scholar)
+                taken += 1
+
+
+def ruling_of(hadith: Hadith, book: Book, text: str) -> tuple[str, str]:
+    """(ruling, who gave it), only as the edition records it — never added here.
+
+    - al-Tirmidhi rules on his hadiths in the text itself: «هذا حديث حسن صحيح».
+    - Where the edition's editors grade every hadith in a footnote (Musnad Ahmad ط الرسالة),
+      the grading phrase opening that footnote, attributed to them; nothing else of the note.
+    - Where the edition records a scholar's ruling under a code (al-Albani's, see
+      coded_rulings), that ruling.
+    """
+    if hadith.ruling[0]:
+        return hadith.ruling
+    if "ترمذي" in _bare(book.name):
+        found = _TIRMIDHI_GRADE.search(_bare(text))
+        if found:
+            return found.group(1).strip(), "الترمذي"
+    editors = GRADING_EDITORS.get(book.id)
+    if editors:
+        for note in hadith.notes:
+            graded = _NOTE_GRADE.match(_DIACRITICS.sub("", note))
+            if graded:
+                return graded.group(0).strip(" ،,.=-"), editors
+    return "", ""
 
 
 def without_front_matter(hadiths: list[Hadith]) -> list[Hadith]:
@@ -205,13 +298,13 @@ def chain_of(raw: str) -> list[str]:
     """The narrators linked before the Prophet's words, compiler's teacher first; empty when the
     narration has «ح» (several chains — the database reads those from the wording)."""
     head = raw.split("<hadeeth", 1)[0]
+    if _TAHWIL.search(_bare(_TAG.sub(" ", head))):
+        return []
     links = list(_NARRATOR.finditer(head))
     names: list[str] = []
     for i, link in enumerate(links):
         name = plain(link.group(2)).strip(" ،,:؛")
         between = _bare(plain(head[links[i - 1].end():link.start()])) if i else ""
-        if re.search(r"(?:^|\s)ح(?:\s|$)", between):
-            return []
         # «قتيبة، وأبو بكر» / «أبا هريرة وأبا سعيد» narrated together; Shamela puts the «و»
         # either between the two links or inside the second one.
         joined = between == "" and _bare(name).startswith("و")
@@ -232,11 +325,16 @@ def to_record(hadith: Hadith, book: Book, hukm: str, mohaddith: str) -> HadithRe
     sanad: list[Narrator] = []
     if hadith.narrators:
         chain = [Narrator(name=n) for n in reversed(hadith.narrators)]
-        sanad = ([Narrator(name=PROPHET)] if matn else []) + chain
+        # Raised to the Prophet ﷺ: the edition marks his words, or the narration names him (not every
+        # edition marks the words of every hadith). Else it ends with the last narrator named.
+        raised = bool(matn) or bool(_PROPHET_NAMED.search(_bare(text)))
+        sanad = ([Narrator(name=PROPHET)] if raised else []) + chain
+    found, by = ruling_of(hadith, book, text)
     return HadithRecord(
         id=f"{book.id}-{'-'.join(map(str, hadith.numbers))}",
         text=text, matn=matn, sanad=sanad, topic=hadith.topic,
-        source=books.title(book.name), hukm=hukm, mohaddith=mohaddith,
+        source=books.title(book.name),
+        hukm=found or hukm, mohaddith=by if found else mohaddith,
     )
 
 
@@ -273,15 +371,17 @@ def main() -> None:
         if book is None:
             raise SystemExit(f"Book {book_id} is not an installed hadith book (see --list)")
         with tempfile.TemporaryDirectory() as work:
-            pages = export_pages(args.shamela, book, Path(work))
-        hadiths = split_hadiths(pages)
+            pages, feet = export_pages(args.shamela, book, Path(work))
+        hadiths = split_hadiths(pages, feet)
+        coded_rulings(hadiths, book, feet)
         records = unique_ids([r for h in hadiths if (r := to_record(h, book, args.hukm, args.mohaddith))])
         out = args.out / f"{unicodedata.normalize('NFC', book.name)}.json"
         out.write_bytes(to_isnad_json(Collection(records)))
         with_chain = sum(1 for r in records if r.sanad)
         with_matn = sum(1 for r in records if r.matn)
+        graded = sum(1 for r in records if r.hukm)
         print(f"{book.name}: {len(pages)} pages → {len(records)} hadiths "
-              f"({with_chain} with their chain, {with_matn} with their matn marked) → {out}")
+              f"({with_chain} with their chain, {with_matn} with their matn marked, {graded} graded) → {out}")
 
 
 if __name__ == "__main__":

@@ -210,7 +210,7 @@ request, then builds the Docker image and checks that it starts and answers `/he
 | Text `.txt` / `.md`            | UTF-8, UTF-8 BOM, UTF-16 or Windows-1256                    | passages, no ruling/sanad                       |
 | Images (`.png` `.jpg` `.tif`…) | OCR, every page of a multi-page TIFF                        | passages, no ruling/sanad                       |
 | JSON (structured hadiths)      | array of records like `docs/hadith_format.example.json`     | one item per hadith with ruling, scholar, sanad |
-| JSON (sunnah.com datasets)     | one book per file: `metadata`, `chapters`, `hadiths`        | one item per hadith; chapter → topic; scholars' grades → ruling |
+| JSON (collection per book)     | one book per file: `metadata`, `chapters`, `hadiths`        | one item per hadith; chapter → topic; scholars' grades → ruling |
 | CSV (hadith datasets)          | one hadith per row; the longest column is the text          | one item per hadith (ruling only if the team sets one) |
 
 ### Scanned books (OCR)
@@ -251,57 +251,11 @@ library), upload that instead of a scan: it is exact and much faster to index.
 
 ### Hadith collections as text (JSON / CSV)
 
-The books exist as text in public datasets. Isnad reads them as published, and was built and
-tested on these two (credits, file lists and counts in [docs/DATA_SOURCES.md](docs/DATA_SOURCES.md)):
-
-- **[Hadith-Data-Sets](https://github.com/abdelrahmaan/Hadith-Data-Sets)** by abdelrahmaan — the
-  nine books as CSV ([All Hadith Books](https://github.com/abdelrahmaan/Hadith-Data-Sets/tree/master/All%20Hadith%20Books)),
-  with and without diacritics.
-- **[hadith-json](https://github.com/AhmedBaset/hadith-json)** by AhmedBaset — sunnah.com's text as
-  JSON, one book per file (e.g. [muslim.json](https://github.com/AhmedBaset/hadith-json/blob/main/db/by_book/the_9_books/muslim.json)),
-  with chapters. [Hadith-JSON-Engine](https://github.com/TheAbubakrAbu/Hadith-JSON-Engine) is a
-  corrected edition of it that adds scholars' grades.
-
-The two datasets publish no license, so their files are not redistributed here (the Engine
-edition is MIT). Only the Arabic text is stored — not sunnah.com's English translations. Every
-book is stored and shown under its published title with its compiler (`app/services/books.py`),
-whatever name its file uses; the datasets' errors corrected on the way (Sunan al-Darimi's
-compiler, one title per book) are listed in [docs/DATA_SOURCES.md](docs/DATA_SOURCES.md).
-
-They are exact text, so no OCR is needed, and indexing them costs a few cents. The team chooses
-the editions it approves; datasets name books in English, and Isnad shows the Arabic title
-(«صحيح البخاري», «صحيح مسلم», …).
-
-Upload a file as it is from **المصادر**, or prepare it first with the script:
-
-```bash
-# Convert to Isnad's format (data/structured/), name the book, and measure the cost:
-python scripts/import_hadiths.py bukhari.json --source "صحيح البخاري" --estimate
-# A ruling the team has decided for a whole book (used only where the file has none):
-python scripts/import_hadiths.py "Sahih Muslim.csv" --source "صحيح مسلم" --hukm صحيح --mohaddith مسلم
-# Index straight into the database (same pipeline as an upload):
-python scripts/import_hadiths.py data/books --index
-```
-
-**How a hadith is indexed.** Each hadith gets a vector for its whole narration and, when its
-own words (matn) can be told apart from the chain of narrators — the text after the Prophet ﷺ
-is first named — and run to 8 words or more, a second vector for the matn alone; a visitor
-quotes the words, and the chain would otherwise dilute the match. (Shorter matns get no vector
-of their own: a 4-word text lands close to almost any short query.) Its text also goes into a
-literal index (SQLite FTS5): a quote of three words or more that appears word for word in a
-hadith is reported with similarity 1.0, whatever the diacritics, punctuation or hamza forms —
-unless a short phrase is so common it names no text («قال رسول الله»). Search returns each
-hadith once, with its **word overlap**: the share of the query's meaningful words found in it.
-Queries are embedded after Qwen3's task instruction (`EMBEDDING_QUERY_INSTRUCTION`).
-
-Measured on Bukhari (60 random hadiths, the opening of the matn as the query): the right hadith
-came first 35/60 times with the narration's vector alone, 56/60 with the matn vector.
-
-`--estimate` embeds a random sample of 200 hadiths with `EMBEDDING_MODEL`, reads the tokens and
-cost OpenRouter reports for it, and scales that to the whole file. Rulings are never guessed: they
-come from the file (the scholars' grades in the Engine edition, shown in Arabic — صحيح، حسن،
-ضعيف… with the scholar's name) or from `--hukm`. Without a ruling, a search that matches the text
-shows «found in the sources», not «verified».
+Besides Isnad's own JSON format, the importer reads hadith collections published as JSON (one
+book per file, with `metadata`, `chapters` and `hadiths`) or CSV (one hadith per row) —
+`app/services/hadith_import.py`, `scripts/import_hadiths.py`. Every book is stored and shown under
+its published title with its compiler (`app/services/books.py`), whatever name its file uses.
+Isnad's own sources are the Shamela editions below ([docs/DATA_SOURCES.md](docs/DATA_SOURCES.md)).
 
 ### Hadith books from المكتبة الشاملة (Shamela)
 
@@ -318,12 +272,16 @@ python scripts/import_hadiths.py "data/structured/صحيح البخاري - ط �
 Shamela keeps each book's pages in a Lucene index; they are read with Shamela's own Lucene jars
 (`scripts/shamela/ShamelaExport.java`). Its markup gives each hadith's number, **every narrator
 of the chain as linked to Shamela's narrators database** (so the sanad is the edition's, not
-read from the wording), the **matn** exactly as the edition marks it, and the chapter. Only the
-hadith texts are taken — never the footnotes — and no ruling is added (`--hukm` for the team's).
+read from the wording), the **matn** exactly as the edition marks it, the chapter, and the
+**ruling the edition records**, with its author — al-Tirmidhi's own words («هذا حديث حسن صحيح»),
+al-Albani's in Sunan Abi Dawud and Sunan Ibn Majah, the editors' in Musnad Ahmad ط الرسالة (the
+phrase only). Nothing else of the footnotes is taken, and no ruling is ever made up (`--hukm` is
+for one the team decides). A narration with several chains («ح») is left to the database.
 
-Measured on صحيح البخاري ط السلطانية: 11,208 pages → 7,330 hadiths in 42 s, 7,171 with their
-chain and 7,065 with their matn marked; embedding them costs $0.037. The files are written to
-`data/structured/`, which is never committed. Rights: see [docs/DATA_SOURCES.md](docs/DATA_SOURCES.md).
+The eight editions converted (all but Sunan al-Darimi, not installed yet): 63,057 hadiths, 24,651
+with the edition's chain, 37,404 with a recorded ruling; embedding them all costs $0.25. The
+files are written to `data/structured/`, which is never committed. Editions and rights:
+[docs/DATA_SOURCES.md](docs/DATA_SOURCES.md).
 
 ### Disk space
 
@@ -331,7 +289,7 @@ Everything lives on the Volume (`/app/chroma_db`): the vectors (ChromaDB), the t
 literal index and the app data (SQLite), and the uploaded originals. Each text is stored once,
 in SQLite; ChromaDB keeps only vectors and metadata. Measured: about **13 KB per hadith**
 (narration + matn vectors at 1024 dimensions, text, index) — Jami' at-Tirmidhi (4,053 hadiths)
-takes 53 MB, the four books ~300 MB, the nine books of the sunnah.com dataset ~550 MB, plus the
+takes 53 MB, the four books ~300 MB, the nine books ~550 MB, plus the
 original files.
 
 - Before indexing a file, the service checks it will fit and refuses it up front with the space

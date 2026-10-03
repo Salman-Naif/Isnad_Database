@@ -1,6 +1,6 @@
 """Unit tests: reading chains of narration from a hadith's wording, and drawing them as a tree.
 
-The narrations are quoted, some shortened, from the hadith-json and Hadith-Data-Sets datasets
+The narrations are quoted, some shortened, from the books of hadith
 (see docs/DATA_SOURCES.md).
 """
 
@@ -123,7 +123,7 @@ def test_book_author():
     assert isnad_tree.book_author("كتاب غير معروف") == ""
 
 
-# Sunan Ibn Majah #4227 as Hadith-Data-Sets writes it: «ح و حدثنا», with a space.
+# Sunan Ibn Majah #4227 as a CSV collection writes it: «ح و حدثنا», with a space.
 IBN_MAJAH_4227 = (
     "حدثنا أبو بكر بن أبي شيبة حدثنا يزيد بن هارون ح و حدثنا محمد بن رمح أنبأنا الليث بن سعد قالا "
     "أنبأنا يحيى بن سعيد أن محمد بن إبراهيم التيمي أخبره أنه سمع علقمة بن وقاص أنه سمع عمر بن الخطاب "

@@ -1,9 +1,8 @@
 """Unit tests: reading hadith collections in each published JSON and CSV format.
 
-The samples follow the formats of the public datasets listed in docs/DATA_SOURCES.md:
-https://github.com/abdelrahmaan/Hadith-Data-Sets (CSV),
-https://github.com/AhmedBaset/hadith-json and https://github.com/TheAbubakrAbu/Hadith-JSON-Engine (JSON),
-https://github.com/mhashim6/Open-Hadith-Data (CSV: number, text).
+The samples follow the formats the importer reads: a JSON collection per book (with or without
+scholars' grades), and CSV with one hadith per row (a column headed by the book's name, or
+number and text).
 """
 
 import json
@@ -101,7 +100,7 @@ def test_bad_json_is_explained(data, message):
 
 
 def test_csv_with_the_book_name_as_header():
-    # github.com/abdelrahmaan/Hadith-Data-Sets
+    # a CSV collection: one column headed by the book's name
     data = f"Sunan Ibn Maja\n{H1}\n\"{H2}, في سطر فيه فاصلة\"\n".encode()
     collection = read_collection(data, "Sunan Ibn Maja.csv", source="سنن ابن ماجه")
     assert collection.title == "Sunan Ibn Maja"

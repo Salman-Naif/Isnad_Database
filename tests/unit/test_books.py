@@ -7,13 +7,13 @@ from app.services.isnad_tree import book_author
 
 
 @pytest.mark.parametrize(("name", "title"), [
-    # English names of the CSV datasets (Hadith-Data-Sets, docs/DATA_SOURCES.md)
+    # English names that CSV collections use
     ("Sahih Bukhari", "صحيح البخاري"), ("Sahih Muslim Without_Tashkel", "صحيح مسلم"),
     ("Sunan al Tirmidhi", "جامع الترمذي"), ("Sunan Ibn Maja", "سنن ابن ماجه"),
     ("Sunan Abu Dawud", "سنن أبي داود"), ("Sunan al-Nasai", "سنن النسائي"),
     ("Musnad Ahmad ibn Hanbal", "مسند الإمام أحمد بن حنبل"), ("Maliks Muwatta", "موطأ الإمام مالك"),
     ("Sunan al Darami", "سنن الدارمي"),
-    # Arabic titles of the JSON datasets (hadith-json) and of earlier uploads
+    # Arabic titles of JSON collections and of earlier uploads
     ("صحيح البخاري", "صحيح البخاري"), ("موطأ مالك", "موطأ الإمام مالك"), ("مسند أحمد", "مسند الإمام أحمد بن حنبل"),
     ("سنن الترمذي", "جامع الترمذي"), ("مسند الدارمي", "سنن الدارمي"), ("سنن ابى داود", "سنن أبي داود"),
     # File names and references

@@ -2,14 +2,15 @@
 The nine books of hadith Isnad holds, under their published titles, with their compilers.
 
 Every name a book can arrive with — the English name in the CSV datasets, the Arabic title in
-the JSON datasets, a file name, a shorter or older title — is mapped to one entry here, at
+a JSON collection, a Shamela edition («صحيح البخاري - ط السلطانية»), a file name, a shorter or
+older title — is mapped to one entry here, at
 upload time and again when results are shown, so a book has one name everywhere (including
 texts uploaded before this list existed).
 
 Titles, compilers and dates of death (Hijri) follow the standard printed editions and the
-reference platforms named in the challenge's reference pack (dorar.net, shamela.ws). The
-datasets' own author fields are not used: hadith-json gives Sunan al-Darimi's compiler as
-«عبد الرحمن بن عبد الله» — he is Abu Muhammad ʿAbdullah ibn ʿAbd al-Rahman al-Darimi.
+reference platforms named in the challenge's reference pack (dorar.net, shamela.ws). Author
+fields in uploaded files are not used: one gave Sunan al-Darimi's compiler as «عبد الرحمن بن
+عبد الله» — he is Abu Muhammad ʿAbdullah ibn ʿAbd al-Rahman al-Darimi.
 """
 
 import re

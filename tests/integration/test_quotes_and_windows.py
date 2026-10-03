@@ -1,9 +1,8 @@
 """Integration tests: exact-quote search, the matn vector, windowed writing and safe
 replacement — with a real SQLite file and a real ChromaDB collection.
 
-The sample hadiths follow the formats of the public datasets the importer was built for
-(see docs/DATA_SOURCES.md): https://github.com/abdelrahmaan/Hadith-Data-Sets (CSV) and
-https://github.com/AhmedBaset/hadith-json (JSON).
+The sample hadiths follow the formats the importer reads: CSV with one hadith per row, and a
+JSON collection per book.
 """
 
 import json
