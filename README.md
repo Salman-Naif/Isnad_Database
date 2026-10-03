@@ -30,7 +30,7 @@ are documented in the website repository: [Isnad_Website `docs/`](https://github
 
 | Document | What it covers |
 | --- | --- |
-| [`docs/DATA_SOURCES.md`](docs/DATA_SOURCES.md) | The nine books (published titles, compilers), the datasets, their licenses, how the data is used and checked |
+| [`docs/DATA_SOURCES.md`](docs/DATA_SOURCES.md) | The books (published titles, compilers), the eight editions on the live service, the datasets, their licenses, how the data is used and checked |
 | [`THIRD_PARTY_LICENSES.md`](THIRD_PARTY_LICENSES.md) | Every component, service and model, with its license |
 | Isnad_Website [`docs/AI.md`](https://github.com/Salman-Naif/Isnad_Website/blob/main/docs/AI.md) | الذكاء الاصطناعي في البناء وفي المنتج: أدوات التطوير، والخوارزميات والنماذج (بالعربية) |
 | This README | The dashboard, uploads, search, isnad trees, security, deployment, every setting |

@@ -38,7 +38,9 @@ challenge's reference pack names for hadith: [الدرر السنية](https://d
 - The Muwatta in both datasets is Yahya ibn Yahya al-Laythi's transmission (its chains open
   «حدثني يحيى عن مالك»), the one printed as «الموطأ»; its isnad trees end with Malik.
 
-On the live service (October 2026): the nine books, 40,818 hadiths.
+On the live service (October 2026): eight books, about 60,000 hadiths, from the
+edited printed editions of المكتبة الشاملة listed below (Sunan al-Darimi is not installed yet).
+The two datasets below are what Isnad was first built and tested on.
 
 ## Hadith-Data-Sets — CSV
 
