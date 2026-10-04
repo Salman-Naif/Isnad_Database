@@ -132,10 +132,10 @@ def test_change_password_requires_login(client):
 def test_default_user_with_short_password_must_change_it(client, monkeypatch):
     settings = get_settings()
     monkeypatch.setattr(settings, "admin_username", "salman")
-    monkeypatch.setattr(settings, "admin_password", "123456")
+    monkeypatch.setattr(settings, "admin_password", "first1")
     auth.ensure_bootstrap_admin()
 
-    res = login(client, "salman", "123456")
+    res = login(client, "salman", "first1")
     assert res.status_code == 200
     assert res.json()["must_change_password"] is True
     assert "كلمة المرور الافتراضية" in client.get("/").text  # banner on the dashboard
@@ -145,9 +145,9 @@ def test_the_default_password_opens_nothing_but_the_password_form(client, monkey
     """The default password is public: until it is changed, the account can't act."""
     settings = get_settings()
     monkeypatch.setattr(settings, "admin_username", "salman")
-    monkeypatch.setattr(settings, "admin_password", "123456")
+    monkeypatch.setattr(settings, "admin_password", "first1")
     auth.ensure_bootstrap_admin()
-    login(client, "salman", "123456")
+    login(client, "salman", "first1")
 
     for method, path in [("get", "/api/sources"), ("get", "/api/admins"), ("get", "/api/site-settings"),
                          ("delete", "/api/sources/1"), ("get", "/api/reports/summary")]:
@@ -158,7 +158,7 @@ def test_the_default_password_opens_nothing_but_the_password_form(client, monkey
     assert client.post("/api/admins", json={"username": "x", "password": "long-enough-pass"}).status_code == 403
     assert client.get("/api/auth/me").status_code == 200
 
-    res = client.post("/api/auth/change-password", json={"current_password": "123456", "new_password": "new-strong-pass"})
+    res = client.post("/api/auth/change-password", json={"current_password": "first1", "new_password": "new-strong-pass"})
     assert res.status_code == 204
     assert client.get("/api/sources").status_code == 200
 

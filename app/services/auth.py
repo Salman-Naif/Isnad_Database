@@ -178,9 +178,10 @@ def ensure_bootstrap_admin() -> None:
     the account is marked "must change" and the dashboard asks for a new password.
     """
     settings = get_settings()
-    if not (settings.admin_username and settings.admin_password):
-        return
     if count_admins() > 0:
+        return
+    if not (settings.admin_username and settings.admin_password):
+        logger.warning("No users yet: set ADMIN_USERNAME and ADMIN_PASSWORD to create the first one")
         return
     try:
         create_admin(

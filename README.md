@@ -142,16 +142,11 @@ isnad/
 
 ## Default user
 
-On the very first start (while the database has no users) the service creates:
-
-| Username | Password |
-| -------- | -------- |
-| `salman` | `123456` |
-
-After signing in, a banner asks you to change the password: **المستخدمون → حسابي — تغيير كلمة المرور**.
-Do it right after the first deploy — until then anyone with the URL and this password can sign in.
-New passwords need at least 8 characters. To use other defaults, set `ADMIN_USERNAME` /
-`ADMIN_PASSWORD` before the first deploy.
+On the very first start (while the database has no users) the service creates the user
+`ADMIN_USERNAME` (default `salman`) with the password in `ADMIN_PASSWORD` — set it in Railway's
+Variables before the first deploy; no password is written in the code or the docs, and without
+one no user is created. After signing in, a banner asks for a new password: **المستخدمون → حسابي
+— تغيير كلمة المرور**. New passwords need at least 8 characters.
 
 This user (`ADMIN_USERNAME`) is the **system manager**: the only one who can add and delete
 users, and no one — not even from `scripts/manage_admins.py` — can delete it. Other users can
@@ -430,10 +425,9 @@ curl -X POST https://<database-service>/api/v1/search \
   advisories (PYSEC-2026-3813/3814/3815) concern Chroma's own HTTP server — tenants, RBAC and
   loading remote model code; this service embeds Chroma in-process and exposes no Chroma
   server, so they don't apply and are ignored in the scan.
-- The default password `123456` is public (it's in this README). Until it is changed, the
-  account can sign in and change its password, nothing else: every other admin endpoint
-  answers 403. Change it right after the first deploy, or set `ADMIN_PASSWORD` in Railway
-  before the first deploy.
+- The first user's password comes from `ADMIN_PASSWORD` (Railway's Variables), never from the
+  code. Until it is replaced in the dashboard, the account can sign in and change its password,
+  nothing else: every other admin endpoint answers 403.
 - Sign-in is limited per client IP and per account (`LOGIN_ATTEMPTS_PER_ACCOUNT_PER_15_MINUTES`):
   the IP comes from `X-Forwarded-For`, to which a client can add made-up addresses before
   Railway's proxy appends the real one, so the per-IP limit alone can be dodged.
@@ -461,13 +455,14 @@ Arabic font for PDF reports). There is no local model, so the image is small and
    | `SITE_API_KEY`       | a long random key — give the same value to the main website |
    | `OPENROUTER_API_KEY` | your OpenRouter key                                     |
    | `PORT`               | `8000`                                                  |
+   | `ADMIN_PASSWORD`     | the first user's first password (replaced after signing in) |
 
    Generate `SITE_API_KEY` with `python -c "import secrets; print(secrets.token_urlsafe(32))"`.
    `PORT` is pinned so it matches the port you give the domain in the next step.
 5. **Public URL:** service → **Settings** → **Networking** → **Generate Domain**, target port
    **`8000`**. This is the database's own link, e.g. `https://<database-service>.up.railway.app`.
 6. **Deploy** and wait until the deployment is **Active** (the healthcheck on `/health` passes).
-7. Open the URL, sign in as `salman` / `123456`, and **change the password immediately**.
+7. Open the URL, sign in as `salman` with `ADMIN_PASSWORD`, and set a new password when asked.
 8. Upload your approved sources from the **المصادر** tab.
 
 Every push to `main` redeploys automatically; the Volume keeps all data between deploys.
@@ -481,7 +476,7 @@ Keep the service at **one replica** — the app database is SQLite on the Volume
 | `OPENROUTER_API_KEY`            | Yes          | — (embeddings and OCR here + chat model on the main website)  |
 | `OPENROUTER_BASE_URL`           | No           | `https://openrouter.ai/api/v1`                                |
 | `ADMIN_USERNAME`                | No           | `salman` (default user, first start only)                     |
-| `ADMIN_PASSWORD`                | No           | `123456` (must be changed after signing in)                   |
+| `ADMIN_PASSWORD`                | Yes, first start | — (the first user's password; replaced after signing in)                 |
 | `SESSION_HOURS`                 | No           | `12`                                                          |
 | `LOGIN_ATTEMPTS_PER_15_MINUTES` | No           | `10`                                                          |
 | `LOGIN_ATTEMPTS_PER_ACCOUNT_PER_15_MINUTES` | No | `20`                                                          |

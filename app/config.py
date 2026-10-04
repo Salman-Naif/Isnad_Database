@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     # (i.e. on the very first deploy). Its password is marked as "must change": the
     # dashboard keeps asking until it is changed. Override both on Railway if you like.
     admin_username: str = "salman"
-    admin_password: str = "123456"  # noqa: S105 — documented first-login default, must be changed
+    admin_password: str = ""  # the first user's first password: set it in Railway, never in the code
     session_hours: int = 12
     login_attempts_per_15_minutes: int = 10
     # Per account, whatever address the attempts claim to come from

@@ -73,11 +73,11 @@ def test_change_own_password(admin_client):
 
 def test_changing_password_clears_the_default_flag(client, monkeypatch):
     monkeypatch.setattr(get_settings(), "admin_username", "salman")
-    monkeypatch.setattr(get_settings(), "admin_password", "123456")
+    monkeypatch.setattr(get_settings(), "admin_password", "first1")
     auth.ensure_bootstrap_admin()
-    login(client, "salman", "123456")
+    login(client, "salman", "first1")
 
-    client.post("/api/auth/change-password", json={"current_password": "123456", "new_password": "new-strong-pass"})
+    client.post("/api/auth/change-password", json={"current_password": "first1", "new_password": "new-strong-pass"})
     assert client.get("/api/auth/me").json()["must_change_password"] is False
     assert "كلمة المرور الافتراضية" not in client.get("/").text
 
