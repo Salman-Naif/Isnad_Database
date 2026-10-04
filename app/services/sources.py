@@ -286,6 +286,20 @@ def delete_source(source: SourceInfo, store: VectorStore) -> None:
     _executor.submit(reclaim_space, store)
 
 
+def schedule_index_rebuild() -> None:
+    """Bring the literal index to its current form (text_index.rebuild_index) in the background,
+    queued with the uploads so it never writes at the same time as one."""
+    def rebuild() -> None:
+        try:
+            count = text_index.rebuild_index()
+            if count:
+                logger.info("Literal index rebuilt for %d texts", count)
+        except Exception:
+            logger.exception("Could not rebuild the literal index")
+
+    _executor.submit(rebuild)
+
+
 def reclaim_space(store: VectorStore) -> None:
     """Give the space of deleted items back to the disk (SQLite files never shrink alone)."""
     try:

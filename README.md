@@ -363,7 +363,7 @@ Call it from the website's **server** — never from browser JavaScript, or the 
 | Endpoint             | Method | Body / response                                                                  |
 | -------------------- | ------ | -------------------------------------------------------------------------------- |
 | `/site-config`       | GET    | `{maintenance_mode, maintenance_message, search_enabled, chat_enabled, announcement}` |
-| `/search`            | POST   | `{"query": "...", "top_k": 5}` → closest passages with similarity, word overlap, ruling, sanad, isnad tree, source; a quote found word for word in several books comes in the books' order (al-Bukhari, Muslim, then the Sunan…) |
+| `/search`            | POST   | `{"query": "...", "top_k": 5}` → closest passages with similarity, word overlap, ruling, sanad, isnad tree, source; a quote found word for word in several books comes in the books' order (al-Bukhari, Muslim, then the Sunan…). Word for word ignores diacritics, letter forms and a word's leading و / ف («من غشنا فليس منا» finds Muslim's «…ومن غشنا فليس منا»); when that rule changes, the index is rebuilt from the stored texts on startup (~10 s for the eight books) |
 | `/topics`            | GET    | Topics of the structured hadiths with counts                                     |
 | `/events`            | POST   | `{"type": "visit" \| "search" \| "chat", "visitor_id", "query", "result", "latency_ms"}` |
 

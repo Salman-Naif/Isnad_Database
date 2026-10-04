@@ -154,3 +154,23 @@ def test_texts_are_stored_before_their_vectors(admin_client, store, monkeypatch)
     monkeypatch.setattr(store, "upsert", upsert)
     upload(admin_client, "Sahih Bukhari.csv", CSV.encode())
     assert missing == []
+
+
+def test_a_quote_starting_after_a_joined_waw_is_found_word_for_word(client):
+    # Muslim: «من حمل علينا السلاح فليس منا، ومن غشنا فليس منا» — quoted as «من غشنا فليس منا»
+    text_index.add([("muslim-101", "muslim.json", "مَنْ حَمَلَ عَلَيْنَا السِّلَاحَ فَلَيْسَ مِنَّا، وَمَنْ غَشَّنَا فَلَيْسَ مِنَّا")])
+    assert text_index.find_quote("من غشنا فليس منا") == ["muslim-101"]
+    assert text_index.find_quote("ومن غشنا فليس منا") == ["muslim-101"]
+
+
+def test_an_index_built_in_the_old_form_is_rebuilt_once(client):
+    with connection() as conn:
+        rowid = conn.execute("INSERT INTO passages (item_id, source, text) VALUES (?, ?, ?)",
+                             ("muslim-101", "muslim.json", "فليس منا، ومن غشنا فليس منا")).lastrowid
+        # as an older version indexed it: «ومن» kept whole
+        conn.execute("INSERT INTO passages_fts (rowid, body) VALUES (?, ?)", (rowid, "فليس منا ومن غشنا فليس منا"))
+        conn.execute("PRAGMA user_version = 0")
+    assert text_index.find_quote("من غشنا فليس منا") == []
+    assert text_index.rebuild_index() == 1
+    assert text_index.find_quote("من غشنا فليس منا") == ["muslim-101"]
+    assert text_index.rebuild_index() == 0  # current: nothing to do

@@ -20,7 +20,7 @@ from app.config import BASE_DIR, get_settings
 from app.core.logging import setup_logging
 from app.db.sqlite import init_db
 from app.services.auth import ensure_bootstrap_admin
-from app.services.sources import recover_interrupted
+from app.services.sources import recover_interrupted, schedule_index_rebuild
 
 settings = get_settings()
 setup_logging(settings.log_level)
@@ -53,6 +53,8 @@ async def lifespan(_: FastAPI):
     init_db()
     ensure_bootstrap_admin()
     recover_interrupted()
+    # In the indexing queue, after any upload: the literal index in its current form.
+    schedule_index_rebuild()
     # Open the vector database (and load chromadb/numpy) once, on the main thread, before
     # any request thread or the background worker can import them concurrently.
     try:

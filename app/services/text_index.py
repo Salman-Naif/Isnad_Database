@@ -10,7 +10,8 @@ Semantic search compares meanings, so a hadith quoted word for word inside a lon
 (chain of narrators + text) scores well below 1. This index answers the simpler question
 "do these exact words appear in an approved source?" — a quote found here is reported with
 similarity 1.0. Text is compared without diacritics, punctuation or letter-form differences
-(أ/إ/آ/ا, ى/ي, ة/ه), the way a visitor may type it.
+(أ/إ/آ/ا, ى/ي, ة/ه), the way a visitor may type it, and a word's leading و / ف is not part of it
+(«ومن غشنا فليس منا» in Muslim is found by «من غشنا فليس منا»).
 
 Rows mirror the vector store's items (same ids), so both are written and deleted together.
 """
@@ -63,6 +64,23 @@ def word_overlap(query: str, text: str) -> float:
     return round(sum(w in present for w in words) / len(words), 4)
 
 
+# How texts are indexed and quotes looked up. Bumped when index_form() changes: the index is then
+# rebuilt from the stored texts on startup (rebuild_index), without re-uploading anything.
+INDEX_FORM_VERSION = 1
+_REBUILD_BATCH = 2_000
+
+
+def _without_conjunction(word: str) -> str:
+    """«ومن» → «من», «فقال» → «قال»: a quote often starts in the middle of a sentence, where the
+    word it opens with is joined to a و or ف. Dropped alike from the texts and the quotes."""
+    return word[1:] if len(word) >= 3 and word[0] in "وف" else word
+
+
+def index_form(text: str) -> str:
+    """A text as the literal index holds it, and a quote as it is looked up."""
+    return " ".join(_without_conjunction(w) for w in normalize(text).split())
+
+
 def add(rows: list[tuple[str, str, str]]) -> None:
     """Store and index (item_id, source, text) rows."""
     with connection() as conn:
@@ -70,7 +88,28 @@ def add(rows: list[tuple[str, str, str]]) -> None:
             rowid = conn.execute(
                 "INSERT INTO passages (item_id, source, text) VALUES (?, ?, ?)", (item_id, source, text)
             ).lastrowid
-            conn.execute("INSERT INTO passages_fts (rowid, body) VALUES (?, ?)", (rowid, normalize(text)))
+            conn.execute("INSERT INTO passages_fts (rowid, body) VALUES (?, ?)", (rowid, index_form(text)))
+
+
+def rebuild_index() -> int:
+    """Re-index every stored text in the current form, if the index was built in an older one.
+    Returns how many texts were re-indexed (0 when the index is current)."""
+    with connection() as conn:
+        if conn.execute("PRAGMA user_version").fetchone()[0] >= INDEX_FORM_VERSION:
+            return 0
+        rowids = [r[0] for r in conn.execute("SELECT rowid FROM passages ORDER BY rowid")]
+    for start in range(0, len(rowids), _REBUILD_BATCH):
+        batch = rowids[start:start + _REBUILD_BATCH]
+        marks = ",".join("?" * len(batch))
+        with connection() as conn:
+            # Fixed SQL: only "?" placeholders are joined in; the rowids are bound parameters.
+            texts = conn.execute(f"SELECT rowid, text FROM passages WHERE rowid IN ({marks})", batch).fetchall()  # noqa: S608  # nosec B608
+            conn.executemany("DELETE FROM passages_fts WHERE rowid = ?", [(r,) for r in batch])
+            conn.executemany("INSERT INTO passages_fts (rowid, body) VALUES (?, ?)",
+                             [(row[0], index_form(row[1])) for row in texts])
+    with connection() as conn:
+        conn.execute(f"PRAGMA user_version = {int(INDEX_FORM_VERSION)}")
+    return len(rowids)
 
 
 def delete_ids(item_ids: list[str]) -> None:
@@ -121,7 +160,7 @@ def _delete_rows(conn, rowids: list[int]) -> None:
 def find_quote(query: str) -> list[str]:
     """Ids of the passages containing the query word for word (empty if it's too short or
     too common to identify a text)."""
-    words = normalize(query).split()
+    words = index_form(query).split()
     if len(words) < MIN_QUOTE_WORDS:
         return []
     phrase = '"' + " ".join(words) + '"'  # an FTS5 phrase: these words, adjacent, in order
