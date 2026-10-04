@@ -145,3 +145,14 @@ def test_a_book_uploaded_under_an_old_name_is_shown_under_its_published_title(ad
                                 json={"query": "نهى عن بيع الثمار حتى يبدو صلاحها", "top_k": 1}).json()["matches"]
     assert match["source"] == "موطأ الإمام مالك"
     assert match["compiler"] == "الإمام أبو عبد الله مالك بن أنس الأصبحي (ت 179هـ)"
+
+
+def test_a_vector_without_its_stored_text_is_not_returned(admin_client, site_headers):
+    # A write cut off by a restart can leave vectors whose texts were never stored
+    index_hadith(admin_client)
+    with connection() as conn:
+        conn.execute("DELETE FROM passages_fts")
+        conn.execute("DELETE FROM passages")
+    res = admin_client.post("/api/v1/search", headers=site_headers,
+                            json={"query": "إنما الأعمال بالنيات وإنما لكل امرئ ما نوى", "top_k": 3})
+    assert res.status_code == 200 and res.json()["matches"] == []

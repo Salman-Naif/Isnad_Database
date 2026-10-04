@@ -163,11 +163,12 @@ def _write(
             window = items[start:start + WRITE_WINDOW]
             ids = [f"{base}-{item.key}" for item in window]
             vectors = embedder.encode([item.embed for item in window], _progress(progress, start, len(items)))
-            store.upsert(ids=ids, embeddings=vectors, metadatas=[item.metadata for item in window])
             written += ids
             # The text is stored once, with the narration (or chunk); a matn item shows it too.
+            # Texts first: a search never finds a vector whose text isn't there yet.
             text_index.add([(i, source, item.text) for i, item in zip(ids, window, strict=True)
                             if item.metadata.get("part") != "matn"])
+            store.upsert(ids=ids, embeddings=vectors, metadatas=[item.metadata for item in window])
     except BaseException:
         store.delete_ids(written)
         text_index.delete_ids(written)

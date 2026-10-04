@@ -65,7 +65,8 @@ def search(
     seen: set[str] = set()
     for hit in exact + close:
         key = _text_key(hit)
-        if key in seen:
+        # A vector whose text isn't stored (a write cut off by a restart) has nothing to show.
+        if key in seen or not (hit["text"] or "").strip():
             continue
         seen.add(key)
         matches.append(_site_match(hit, payload.query))

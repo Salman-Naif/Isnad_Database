@@ -139,3 +139,18 @@ def test_sunnah_json_gets_matn_vectors_too(admin_client, store):
 def test_database_uses_write_ahead_logging(client):
     with connection() as conn:
         assert conn.execute("PRAGMA journal_mode").fetchone()[0] == "wal"
+
+
+def test_texts_are_stored_before_their_vectors(admin_client, store, monkeypatch):
+    # A search during an upload never meets a vector whose text isn't there yet
+    original = store.upsert
+    missing = []
+
+    def upsert(ids, embeddings, metadatas, documents=None):
+        stored = text_index.texts(ids)
+        missing.extend(i for i in ids if i not in stored)
+        return original(ids=ids, embeddings=embeddings, metadatas=metadatas, documents=documents)
+
+    monkeypatch.setattr(store, "upsert", upsert)
+    upload(admin_client, "Sahih Bukhari.csv", CSV.encode())
+    assert missing == []
