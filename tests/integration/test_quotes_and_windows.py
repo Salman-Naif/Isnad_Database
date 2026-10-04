@@ -174,3 +174,14 @@ def test_an_index_built_in_the_old_form_is_rebuilt_once(client):
     assert text_index.rebuild_index() == 1
     assert text_index.find_quote("من غشنا فليس منا") == ["muslim-101"]
     assert text_index.rebuild_index() == 0  # current: nothing to do
+
+
+def test_the_words_of_a_hadith_many_narrations_repeat_are_still_a_quote(client):
+    # «لا تقوم الساعة حتى تقاتلوا» is in 21 passages of the eight books: a hadith's words, no formula
+    rows = [(f"h{i}", "book.csv", f"حدثنا فلان {i} عن النبي ﷺ قال لا تقوم الساعة حتى تقاتلوا قوما") for i in range(30)]
+    text_index.add(rows)
+    assert len(text_index.find_quote("لا تقوم الساعة حتى تقاتلوا")) == 30
+    assert text_index.find_quote("قال لا تقوم الساعة") == []  # with a word of transmission: a formula
+    many = [(f"m{i}", "book.csv", f"رواية {i} لا تقوم الساعة حتى تقاتلوا قوما") for i in range(40)]
+    text_index.add(many)  # 70 passages: too common to point to one hadith
+    assert text_index.find_quote("لا تقوم الساعة حتى تقاتلوا") == []

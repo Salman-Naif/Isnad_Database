@@ -25,11 +25,18 @@ from app.services.text_processing import ARABIC_DIACRITICS, TATWEEL
 # A quote must be at least this long to count ("إنما الأعمال بالنيات"); common short phrases
 # ("قال رسول الله") are then ruled out by how many passages contain them.
 MIN_QUOTE_WORDS = 3
-# A short phrase found in more passages than this is a formula, not a quote of one text.
-# From LONG_QUOTE_WORDS words on it is a real quote even when many narrations repeat it
-# (the same hadith through 30 chains); the first MAX_QUOTE_MATCHES are returned.
+# A short phrase found in more passages than this is a formula, not a quote of one text
+# («قال رسول الله صلى الله عليه وسلم»: 11,713 passages of the eight books; «قال عمر رضي الله عنه»:
+# 39) — unless it holds none of the words of transmission and stays under MAX_MATN_MATCHES: the
+# words of a well-known hadith repeated by many narrations («لا تقوم الساعة حتى تقاتلوا»: 21,
+# «من كذب علي متعمدا فليتبوأ»: 55). From LONG_QUOTE_WORDS words on, a phrase is a quote however
+# many narrations repeat it. At most MAX_MATN_MATCHES passages are returned.
 MAX_QUOTE_MATCHES = 20
+MAX_MATN_MATCHES = 60
 LONG_QUOTE_WORDS = 8
+# Words of a chain, in index_form(): a phrase holding one is the chain's wording, not a hadith's.
+_TRANSMISSION = {"قال", "قالت", "قالا", "قالوا", "عن", "حدثنا", "حدثني", "حدثه", "اخبرنا", "اخبرني", "انبانا",
+                 "سمعت", "سمع", "يقول", "رضي"}
 
 _DELETE_BATCH = 500
 
@@ -168,8 +175,9 @@ def find_quote(query: str) -> list[str]:
         rows = conn.execute(
             """SELECT p.item_id FROM passages_fts f JOIN passages p ON p.rowid = f.rowid
                WHERE passages_fts MATCH ? LIMIT ?""",
-            (phrase, MAX_QUOTE_MATCHES + 1),
+            (phrase, MAX_MATN_MATCHES + 1),
         ).fetchall()
-    if len(rows) > MAX_QUOTE_MATCHES and len(words) < LONG_QUOTE_WORDS:
+    if len(words) < LONG_QUOTE_WORDS and len(rows) > MAX_QUOTE_MATCHES and (
+            len(rows) > MAX_MATN_MATCHES or _TRANSMISSION & set(words)):
         return []
-    return [r["item_id"] for r in rows[:MAX_QUOTE_MATCHES]]
+    return [r["item_id"] for r in rows[:MAX_MATN_MATCHES]]
