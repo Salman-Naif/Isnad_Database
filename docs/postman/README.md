@@ -31,9 +31,10 @@ The chat-model tests live in the **Isnad_Website** repository.
 
 ## Many queries at once
 
-Fill `search-tests.csv` from your own sources (`query`, `expected_source` = file name as shown
-in the dashboard, `min_similarity`; leave `expected_source` empty for text that should match
-nothing). Collection → **Run** → select only "3 — البحث في المصادر" → **Select File** → the CSV
+Fill `search-tests.csv` from your own sources (`query`, `expected_source` = the book as results
+name it — e.g. `صحيح البخاري`, or the file name of an uploaded book — and `min_similarity`; leave
+`expected_source` empty for text that should match nothing: it passes when the website would
+say «no match»). Collection → **Run** → select only "3 — البحث في المصادر" → **Select File** → the CSV
 → **Run**.
 
 Similarity: a word-for-word quote = 1.0 · two words missing or one changed ≈ 0.58–0.85 · not in the sources ≈ 0.42–0.61 (the website's thresholds are 0.90 / 0.60).

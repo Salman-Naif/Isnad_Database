@@ -30,7 +30,7 @@ are documented in the website repository: [Isnad_Website `docs/`](https://github
 
 | Document | What it covers |
 | --- | --- |
-| [`docs/DATA_SOURCES.md`](docs/DATA_SOURCES.md) | The books (published titles, compilers), the eight editions on the live service, the datasets, their licenses, how the data is used and checked |
+| [`docs/DATA_SOURCES.md`](docs/DATA_SOURCES.md) | The books (published titles, compilers), the eight Shamela editions on the live service, the rulings and who gave them, rights, how the data is used and checked |
 | [`THIRD_PARTY_LICENSES.md`](THIRD_PARTY_LICENSES.md) | Every component, service and model, with its license |
 | Isnad_Website [`docs/AI.md`](https://github.com/Salman-Naif/Isnad_Website/blob/main/docs/AI.md) | الذكاء الاصطناعي في البناء وفي المنتج: أدوات التطوير، والخوارزميات والنماذج (بالعربية) |
 | This README | The dashboard, uploads, search, isnad trees, security, deployment, every setting |
@@ -39,7 +39,7 @@ are documented in the website repository: [Isnad_Website `docs/`](https://github
 
 The team's code is under the [MIT License](LICENSE). Third-party components, models, services
 and data keep their own licenses: [`THIRD_PARTY_LICENSES.md`](THIRD_PARTY_LICENSES.md) and
-[`docs/DATA_SOURCES.md`](docs/DATA_SOURCES.md). The hadith datasets are not redistributed here.
+[`docs/DATA_SOURCES.md`](docs/DATA_SOURCES.md). The converted hadith books are not redistributed here.
 
 ---
 
@@ -102,7 +102,7 @@ isnad/
 │   │   ├── ocr.py              # Page layout, vision-model OCR with cross-check, Tesseract
 │   │   ├── text_processing.py  # Arabic cleaning and chunking
 │   │   ├── hadith_import.py    # Hadith collections in JSON / CSV → records; matn; titles
-│   │   ├── books.py            # The nine books: published titles, compilers (and dataset corrections)
+│   │   ├── books.py            # The nine books: published titles, compilers
 │   │   ├── text_index.py       # Literal index (SQLite FTS5) for word-for-word quotes
 │   │   ├── embeddings.py       # Text → vector
 │   │   ├── vector_store.py     # ChromaDB storage and search
@@ -121,12 +121,14 @@ isnad/
 │   ├── manage_admins.py        # Create / list / delete users, reset passwords
 │   ├── build_database.py       # Bulk-load files from data/raw and data/structured
 │   ├── extract_text.py         # Preview extracted / OCR'd text
-│   ├── import_hadiths.py       # Convert / index / cost public hadith collections (JSON, CSV)
+│   ├── import_shamela.py       # Convert Shamela editions: text, chain, matn, recorded ruling
+│   ├── shamela/ShamelaExport.java  # Reads a book's pages from Shamela's Lucene index
+│   ├── import_hadiths.py       # Convert / index / measure the cost of hadith collections (JSON, CSV)
 │   └── reset_sources.py        # Remove every source, keep users/settings/stats (full disk)
 ├── data/                       # Local folders for bulk loading (not committed)
 ├── docs/
 │   ├── hadith_format.example.json  # JSON format for structured hadith uploads
-│   └── DATA_SOURCES.md         # The public hadith datasets used, with credits
+│   └── DATA_SOURCES.md         # The Shamela editions, rulings, rights and credits
 ├── tests/
 │   ├── unit/ · integration/ · api/ · security/ · system/   # one folder per test level
 │   └── conftest.py             # fakes and fixtures shared by the tests
@@ -211,7 +213,7 @@ request, then builds the Docker image and checks that it starts and answers `/he
 | Images (`.png` `.jpg` `.tif`…) | OCR, every page of a multi-page TIFF                        | passages, no ruling/sanad                       |
 | JSON (structured hadiths)      | array of records like `docs/hadith_format.example.json`     | one item per hadith with ruling, scholar, sanad |
 | JSON (collection per book)     | one book per file: `metadata`, `chapters`, `hadiths`        | one item per hadith; chapter → topic; scholars' grades → ruling |
-| CSV (hadith datasets)          | one hadith per row; the longest column is the text          | one item per hadith (ruling only if the team sets one) |
+| CSV (hadith collections)       | one hadith per row; the longest column is the text          | one item per hadith (ruling only if the team sets one) |
 
 ### Scanned books (OCR)
 
@@ -278,8 +280,8 @@ al-Albani's in Sunan Abi Dawud and Sunan Ibn Majah, the editors' in Musnad Ahmad
 phrase only). Nothing else of the footnotes is taken, and no ruling is ever made up (`--hukm` is
 for one the team decides). A narration with several chains («ح») is left to the database.
 
-The eight editions converted (all but Sunan al-Darimi, not installed yet): 63,057 hadiths, 24,651
-with the edition's chain, 37,404 with a recorded ruling; embedding them all costs $0.25. The
+The eight editions converted (all but Sunan al-Darimi, not installed yet): 63,815 hadiths, 25,486
+with the edition's chain, 37,451 with a recorded ruling; embedding them all costs $0.25. The
 files are written to `data/structured/`, which is never committed. Editions and rights:
 [docs/DATA_SOURCES.md](docs/DATA_SOURCES.md).
 
@@ -287,10 +289,10 @@ files are written to `data/structured/`, which is never committed. Editions and 
 
 Everything lives on the Volume (`/app/chroma_db`): the vectors (ChromaDB), the texts with their
 literal index and the app data (SQLite), and the uploaded originals. Each text is stored once,
-in SQLite; ChromaDB keeps only vectors and metadata. Measured: about **13 KB per hadith**
-(narration + matn vectors at 1024 dimensions, text, index) — Jami' at-Tirmidhi (4,053 hadiths)
-takes 53 MB, the four books ~300 MB, the nine books ~550 MB, plus the
-original files.
+in SQLite; ChromaDB keeps only vectors and metadata. Measured: about **14 KB per hadith**
+(narration + matn vectors at 1024 dimensions, text, index, original file) — the eight Shamela
+editions (63,815 hadiths, 114,941 vectors) take **about 0.9 GB**: ~650 MB of vectors, ~130 MB of
+texts and literal index, ~100 MB of original files. Indexing them took about 15 minutes.
 
 - Before indexing a file, the service checks it will fit and refuses it up front with the space
   needed and available — never halfway through.
@@ -332,8 +334,8 @@ runs locally, so the service uses ~150 MB of memory. `qwen/qwen3-embedding-4b` w
 after comparing 17 embedding models on OpenRouter with hadiths from Bukhari, Muslim, Tirmidhi
 and Ibn Majah, asked in a visitor's own words: it found every one of them first, with the
 widest gap to the closest wrong passage. Running the same open model on the server would give
-the same vectors, only much slower on a CPU. Cost: $0.02 per million tokens (a few cents for
-the four books; a search costs ~$0.0000004). Uploaded texts and search queries are sent to
+the same vectors, only much slower on a CPU. Cost: $0.02 per million tokens (about $0.25 for
+the eight Shamela editions; a search costs ~$0.0000004). Uploaded texts and search queries are sent to
 OpenRouter to be embedded.
 
 **Dimensions.** Every vector has `EMBEDDING_DIMENSIONS` numbers: 1024, asked of
@@ -386,7 +388,10 @@ with a `sanad`, the tree is that sanad. Otherwise it is read from the narration'
   before it; narrators who heard it together («قتيبة وأحمد بن عبدة») share one node.
 
 It is read automatically, not taken from an isnad database: the website says so under the tree.
-Checked on samples from all nine books of the datasets in `docs/DATA_SOURCES.md`.
+Checked on all eight Shamela editions (`docs/DATA_SOURCES.md`): 62,919 of the 63,815 hadiths get
+a tree, none with a «ح» or a stray number read as a narrator; the rest are sayings and opinions
+without a chain (Malik's «قال مالك», al-Tirmidhi's «وفي الباب») and parts of a narration the
+edition numbers apart.
 
 **Similarity scale** (measured on 21,000 hadiths of Muslim, Tirmidhi and Ibn Majah): a quote
 found word for word = 1.0 (literal index) · two words missing or one word changed ≈ 0.58–0.85 ·
@@ -443,7 +448,7 @@ Arabic font for PDF reports). There is no local model, so the image is small and
 3. **Volume — before anything else is saved:** open the service → right-click / **⋯** →
    **Attach Volume** → mount path **`/app/chroma_db`**. It holds the vector database, users,
    stats, settings and uploaded originals. Without it, everything is wiped on every deploy.
-   The free plan's 0.5 GB holds about three books; on Hobby, grow it with **Live Resize**
+   The free plan's 0.5 GB can't hold the eight editions (~0.9 GB); on Hobby, grow it with **Live Resize**
    (see "Disk space").
 4. **Variables** (service → **Variables**):
 

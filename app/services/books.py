@@ -1,7 +1,7 @@
 """
 The nine books of hadith Isnad holds, under their published titles, with their compilers.
 
-Every name a book can arrive with — the English name in the CSV datasets, the Arabic title in
+Every name a book can arrive with — an English name in a CSV file, the Arabic title in
 a JSON collection, a Shamela edition («صحيح البخاري - ط السلطانية»), a file name, a shorter or
 older title — is mapped to one entry here, at
 upload time and again when results are shown, so a book has one name everywhere (including
@@ -76,7 +76,7 @@ _BY_KEY = {_key(name): book for book in BOOKS for name in (book.title, *book.ali
 
 
 def find(name: str) -> Book | None:
-    """The book a name refers to: its title or an alias, the name of a dataset that contains an
+    """The book a name refers to: its title or an alias, a file name that contains an
     English one («Sahih Bukhari Without_Tashkel»), or an Arabic name that starts with one
     («صحيح البخاري، 1», «سنن الترمذي - ت بشار»). An Arabic name that only contains a title is
     another book: «ضعيف سنن الترمذي», «صحيح سنن النسائي» (al-Albani's), «مختصر صحيح مسلم»."""

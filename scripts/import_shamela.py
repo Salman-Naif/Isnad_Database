@@ -69,7 +69,7 @@ _UNMAPPED_LIGATURE = re.compile(r"[﵀-﵏]")  # any other honorific glyph: drop
 # «ح» standing alone — «ح»، «(ح)»، «،ح،» — starts another chain of the same hadith.
 _TAHWIL = re.compile(r"(?:^|[^ء-ي])ح(?:[^ء-ي]|$)")
 _PROPHET_NAMED = re.compile(r"ﷺ|صلى الله عليه وسلم|رسول الله|النبي")  # matched without diacritics
-_NOTE_MARK = re.compile(r"\(([٠-٩]{1,3})\)")
+_NOTE_MARK = re.compile(r"\(¬?([٠-٩]{1,3})\)")  # «(١)», or «(¬١)» as some editions write it
 # al-Tirmidhi's words on a hadith, matched without diacritics: «هذا حديث حسن صحيح غريب».
 _TIRMIDHI_GRADE = re.compile(r"هذا حديث ((?:(?:حسن|صحيح|غريب|ضعيف|منكر|مرسل)\s?){1,3})")
 # A footnote that opens with a grading: «إسناده صحيح على شرط الشيخين»، «حسن»، «حديث صحيح، وهذا إسناد ضعيف».
@@ -82,17 +82,56 @@ GRADING_EDITORS = {25794: "شعيب الأرنؤوط وآخرون (مسند أح
 CODED_SCHOLARS = {"حكم الألباني": "الألباني"}
 MIN_BODY_RUN = 50  # numbers rising in a row, from a «1», that mark the hadiths (not an introduction)
 _TRANSMISSION = re.compile(r"(?:^|\s)و?(?:حدثنا|حدثني|اخبرنا|اخبرني|انبانا)(?:\s|$)")
-# A hadith starts a line with its number(s): «٢٠ - », «٤٠٨ - ٤٠٩ - », or Muslim's «١٢٨ - (٧٤) »
-# (a running number, then Abd al-Baqi's). Lines end in \n or \r.
-_START = re.compile(r"(?:^|[\r\n])[ \t]*((?:[٠-٩]+[ \t]*-[ \t]*)+(?:\([٠-٩]+\)[ \t]*)?)")
+# A hadith starts a line with its number(s): «٢٠ - », «٤٠٨ - ٤٠٩ - », Muslim's «١٢٨ - (٧٤) » or
+# «(١٦٩٧/ ١٦٩٨)» (a running number, then Abd al-Baqi's), or a number with a slash: the Muwatta
+# ت الأعظمي's own number before the hadith's («٤/ ١ - », «٢٢٣٧/ »), Musnad Ahmad's parts of one
+# hadith («٨٥٧١/ ١ - »). Lines end in \n or \r. Verse numbers that a page break put at the head of
+# a line («[الأحزاب:⏎٢٨ - ٢٩]») are no hadith, nor a date («٤/ ٧/ ١٤١٢ هـ»).
+_START = re.compile(
+    r"(?:^|[\r\n])[ \t]*("
+    r"(?:[٠-٩]+[ \t]*/[ \t]*(?:(?:[٠-٩]+[ \t]*-[ \t]*)+|(?=[^\s٠-٩]))|(?:[٠-٩]+[ \t]*-[ \t]*)+)"
+    r"(?![ \t]*[٠-٩]+\])(?:\([٠-٩]+(?:[ \t]*/[ \t]*[٠-٩]+)?\)[ \t]*)?)"
+)
 _TITLE = re.compile(r"<span data-type=['\"]title['\"][^>]*>(.*?)</span>", re.S)
+# A title some editions leave unmarked (Ibn Majah, al-Tirmidhi, Bukhari): a line of its own opening
+# with «باب», «كتاب» or «أبواب» — al-Tirmidhi numbers it «(١٤) باب…» or «(١٩٦) (١٩٧) باب…» — after a
+# line that closed a hadith or a title, or before a hadith's number. The word stands as a heading — bare, «بابُ» or
+# «بابٌ» — not as a word of a narration («كتابَ الله», «كتابِه», «…لكل أهل عمل⏎بابٌ من أبواب الجنة»).
+_HEADING_WORD = "|".join(
+    "".join(c + "[\u064b-\u0652\u0670]*" for c in word[:-1]) + word[-1] + "[\u064c\u064f]?"
+    for word in ("باب", "كتاب", "أبواب")
+)
+_HEADING_LINE = r"[ \t]*(?:\([٠-٩]+\)[ \t]*)*(" + _HEADING_WORD + r")(?=[\s:،.])([^\r\n<]{0,250})"
+_PLAIN_TITLES = (
+    re.compile(r"(?:^|[\r\n])" + _HEADING_LINE + r"(?=[\r\n]+[ \t]*[٠-٩]+[ \t]*-)"),
+    re.compile(r"(?:^|(?<=[>».)\]﴾\"])[ \t]*[\r\n]+)" + _HEADING_LINE),
+)
 _NARRATOR = re.compile(r"<a href=\"inr://man-(\d+)\">(.*?)</a>", re.S)
 _MATN = re.compile(r"<hadeeth-\d+>(.*?)<hadeeth>", re.S)
 _TAG = re.compile(r"<[^>]+>")
 _PAGE_MARK = re.compile(r"⦗[٠-٩0-9]+⦘")  # the printed edition's page numbers, inside the text
-_FOOTNOTE_MARK = re.compile(r"\s*\([٠-٩0-9]{1,3}\)")  # «(١)»: a pointer to a footnote, not taken
-# A number inside a narration: Bukhari splits one narration under several numbers («… ٣٠٠ - وكان»).
-_INLINE_NUMBER = re.compile(r"(?<=\s)[٠-٩]+[ \t]*-[ \t]+")
+_FOOTNOTE_MARK = re.compile(r"\s*\(¬?(?:[٠-٩0-9]{1,3}|\*)\)")  # «(١)» / «(¬١)» / «(¬*)»: a pointer to a footnote, not taken
+# A rule the edition draws across a page («_________»). After it, words without diacritics are the
+# printer's own (Muslim ط التركية closes each volume with «تم بحمد الله تعالى في المطبعة العامرة…»);
+# a narration carries on with its diacritics (Musnad Ahmad).
+_RULE = re.compile(r"_{3,}")
+# «• ١١٠٢٠/ قال عبد الله…»: Musnad Ahmad's mark for a narration of Abdullah ibn Ahmad within a
+# hadith, with the hadith's number repeated — the number is not part of the text.
+_ADDITION_NUMBER = re.compile(r"(?<=•)[ \t]*[٠-٩]+[ \t]*/")
+# The basmala on a line of its own before a book: as the glyph «﷽» (always before a book), or
+# spelled out before a title (a letter quoted in a hadith may open with it too).
+_SPELLED_BASMALA = "".join(" +" if c == " " else c + "[\u064b-\u0652\u0670]*" for c in "بسم الله الرحمن الرحيم")
+_BASMALA_LINE = re.compile(
+    r"(?:^|[\r\n])[ \t]*(?:-[ \t]*)?(?:﷽[ \t.]*(?=[\r\n]|$)|"
+    + _SPELLED_BASMALA + r"[ \t.]*(?=[\r\n]*[ \t]*<span data-type=['\"]title))"
+)
+# A few pages keep their footnotes in the body, after a blank line, and none in the footnotes
+# field: «…فأدركت (٣).⏎⏎= ومسلم (١١٧٨)…⏎(١) إسناده صحيح…» (Musnad Ahmad ط الرسالة).
+_NOTES_IN_BODY = re.compile(r"[\r\n][ \t]*[\r\n]\s*(?=(?:= |\(¬?١\)))")
+_VOWELLED = re.compile(r"[ً-ْ]")
+# A number inside a narration: Bukhari splits one narration under several numbers («… ٣٠٠ - وكان»);
+# not a range of verses («[الأحزاب: ٢٨ - ٢٩]»).
+_INLINE_NUMBER = re.compile(r"(?<=\s)[٠-٩]+[ \t]*-[ \t]+(?![ \t]*[٠-٩]+\])")
 _DIACRITICS = re.compile(r"[\u0610-\u061a\u064b-\u065f\u0670\u0640]")
 # «حدثنا أبي / عن أبيه»: a narrator named by kinship to the one before him.
 _KIN = {"ابيه": "والد", "ابي": "والد", "ابيها": "والد", "جده": "جد", "امه": "أم", "عمه": "عم", "خاله": "خال"}
@@ -126,7 +165,18 @@ def plain(markup: str) -> str:
         text = text.replace(glyph, f" {words} ")
     text = _UNMAPPED_LIGATURE.sub("", text)
     text = _INLINE_NUMBER.sub("", text)
-    return " ".join(text.replace("\r", " ").split())
+    text = _ADDITION_NUMBER.sub("", text)
+    text = _RULE.sub(" ", text).replace("¬", "")  # «¬»: a joining mark some editions leave in the text
+    return " ".join(text.replace("\r", " ").split()).removesuffix(" [")  # a bracket the next page opens
+
+
+def without_colophon(page: str) -> str:
+    """The page without what the printer added after a rule (see _RULE)."""
+    rule = _RULE.search(page)
+    if rule is None:
+        return page
+    after = " ".join(_TAG.sub(" ", page[rule.end():]).split()[:12])
+    return page if _VOWELLED.search(after) else page[:rule.start()]
 
 
 def _bare(text: str) -> str:
@@ -153,8 +203,9 @@ def _shorts(meta: str | None) -> dict[str, str]:
         return {}
 
 
-def export_pages(shamela: Path, book: Book, work: Path) -> tuple[list[str], list[str]]:
-    """The book's page bodies and footnotes, in the edition's order."""
+def export_pages(shamela: Path, book: Book, work: Path) -> tuple[list[str], list[str], list[int]]:
+    """The book's page bodies and footnotes, in the edition's order, and the pages that open a
+    volume."""
     jars = [shamela / "app" / "lucene" / "2" / jar for jar in LUCENE_JARS]
     missing = [str(j) for j in jars if not j.exists()]
     if missing:
@@ -176,28 +227,47 @@ def export_pages(shamela: Path, book: Book, work: Path) -> tuple[list[str], list
         pages[page["page"]], feet[page["page"]] = page["body"], page["foot"]
     db = sqlite3.connect(f"file:{book.path}?mode=ro", uri=True)
     try:
-        order = [row[0] for row in db.execute("select id from page order by id")]
+        parts = [(i, part) for i, part in db.execute("select id, part from page order by id") if i in pages]
     finally:
         db.close()
-    kept = [i for i in order if i in pages]
-    return [pages[i] for i in kept], [feet[i] for i in kept]
+    kept = [notes_apart(pages[i], feet[i]) for i, _ in parts]
+    volumes = [n for n in range(1, len(parts)) if parts[n][1] != parts[n - 1][1]]
+    return [body for body, _ in kept], [foot for _, foot in kept], volumes
 
 
-def split_hadiths(pages: list[str], feet: list[str] | None = None) -> list[Hadith]:
+def notes_apart(body: str, foot: str) -> tuple[str, str]:
+    """A page's text and its footnotes, where the page keeps them in its text (see _NOTES_IN_BODY)."""
+    found = None if foot.strip() else _NOTES_IN_BODY.search(body)
+    if found is None:
+        return body, foot
+    return body[:found.start()], body[found.end():]
+
+
+def split_hadiths(pages: list[str], feet: list[str] | None = None,
+                  volumes: list[int] | None = None) -> list[Hadith]:
     """The numbered hadiths of a book, each with the chapter it falls under (and, given the
-    pages' footnotes, the notes its marks point to)."""
+    pages' footnotes, the notes its marks point to). A hadith ends where the next one or a title
+    begins, or where a volume opens (with its title page and introduction) or the basmala stands
+    on its own line before a book."""
+    pages = [without_colophon(page) for page in pages]
     text = "\n".join(pages)
     starts = list(itertools.accumulate((len(p) + 1 for p in pages), initial=0))
     # Where every hadith starts and every title stands, in the order of the book.
     marks = [(m.start(1), "hadith", m) for m in _START.finditer(text)]
     marks += [(m.start(), "title", m) for m in _TITLE.finditer(text)]
-    marks.sort(key=lambda mark: mark[0])
+    plain_titles = {m.start(1): m for rule in _PLAIN_TITLES for m in rule.finditer(text)}
+    marks += [(m.start(), "title", m) for m in plain_titles.values()]
+    marks += [(m.start(), "end", m) for m in _BASMALA_LINE.finditer(text)]
+    marks += [(starts[n], "end", None) for n in volumes or []]
+    marks.sort(key=lambda mark: (mark[0], mark[1] != "end"))
     hadiths: list[Hadith] = []
     kitab = bab = ""
     for i, (_start, kind, match) in enumerate(marks):
         end = marks[i + 1][0] if i + 1 < len(marks) else len(text)
+        if kind == "end":
+            continue
         if kind == "title":
-            title = plain(match.group(1))
+            title = plain("".join(match.groups()))
             if _bare(title).startswith("كتاب"):
                 kitab, bab = title, ""
             elif _bare(title) not in ("باب", "بابٌ"):
@@ -227,7 +297,7 @@ def _notes_of(text: str, start: int, end: int, starts: list[int], feet: list[str
 
 def _footnotes(foot: str) -> dict[str, str]:
     """A page's footnotes by their number: «(١) إسناده صحيح… (٢) …»."""
-    parts = re.split(r"\(([٠-٩]{1,3})\)\s*", foot or "")
+    parts = re.split(r"\(¬?([٠-٩]{1,3})\)\s*", foot or "")
     return {parts[i]: parts[i + 1].strip() for i in range(1, len(parts) - 1, 2)}
 
 
@@ -338,6 +408,45 @@ def to_record(hadith: Hadith, book: Book, hukm: str, mohaddith: str) -> HadithRe
     )
 
 
+# A narration opens with one of these words (matched without diacritics); a record that repeats an
+# earlier number and opens without any is not a hadith — the introduction Musnad Ahmad ط الرسالة
+# puts at the head of every volume («نسخة المكتبة القادرية ببغداد، ورمزها (ق)…», «وضعنا رقم
+# الجزء…»), or a chapter title the edition left unmarked. A hadith split under its own number
+# («قال: فحدثت…») keeps its first number and stays.
+_NARRATION = re.compile(
+    r"(?:^|\s)[وف]?(?:حدثنا|حدثني|حدثناه|حدثنيه|أخبرنا|أخبرني|أنبأنا|أنبأني|ثنا|عن|سمعت|سمع|قال|"
+    r"قالت|أن|كان|رأيت|بلغه|بلغني)(?=[\s:،.]|$)"
+)
+_OPENING_WORDS = 8
+# The copyist's line that closes a book («كمل كتاب الصلاة، والحمد لله كثيرا»), numbered as a
+# paragraph by the Muwatta ت الأعظمي.
+_BOOK_CLOSED = re.compile(r"^(?:كمل|تم) (?:كتاب|الكتاب)")
+_CLOSING_LINE_CHARS = 200
+_ARABIC_LETTER = re.compile(r"[\u0621-\u064a]")
+
+
+def narrations_only(records: list[HadithRecord]) -> list[HadithRecord]:
+    """Without the records that are no hadith: empty ones (an edition prints «……» for a hadith it
+    leaves out), the copyist's closing lines (see _BOOK_CLOSED), and repeated numbers that open
+    with no narration (see _NARRATION)."""
+    seen: set[str] = set()
+    kept = []
+    for record in records:
+        first = record.id
+        repeated = first in seen
+        seen.add(first)
+        if not _ARABIC_LETTER.search(record.text):
+            continue
+        bare = _DIACRITICS.sub("", record.text)
+        if len(bare) < _CLOSING_LINE_CHARS and _BOOK_CLOSED.match(bare):
+            continue
+        opening = " ".join(bare.split()[:_OPENING_WORDS])
+        if repeated and not _NARRATION.search(opening):
+            continue
+        kept.append(record)
+    return kept
+
+
 def unique_ids(records: list[HadithRecord]) -> list[HadithRecord]:
     """An edition can print a number twice (Bukhari ط السلطانية has 8, 23, 3756 and 3934 twice):
     the second keeps its number with «-b» («-c»…), so neither hadith is lost."""
@@ -371,10 +480,11 @@ def main() -> None:
         if book is None:
             raise SystemExit(f"Book {book_id} is not an installed hadith book (see --list)")
         with tempfile.TemporaryDirectory() as work:
-            pages, feet = export_pages(args.shamela, book, Path(work))
-        hadiths = split_hadiths(pages, feet)
+            pages, feet, volumes = export_pages(args.shamela, book, Path(work))
+        hadiths = split_hadiths(pages, feet, volumes)
         coded_rulings(hadiths, book, feet)
-        records = unique_ids([r for h in hadiths if (r := to_record(h, book, args.hukm, args.mohaddith))])
+        records = unique_ids(narrations_only(
+            [r for h in hadiths if (r := to_record(h, book, args.hukm, args.mohaddith))]))
         out = args.out / f"{unicodedata.normalize('NFC', book.name)}.json"
         out.write_bytes(to_isnad_json(Collection(records)))
         with_chain = sum(1 for r in records if r.sanad)

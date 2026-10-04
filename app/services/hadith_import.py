@@ -103,7 +103,10 @@ def read_collection(
 # The hadith's own words (matn) start after the first mention of the Prophet ﷺ in the
 # narration; the words that introduce them ("قال", "يقول", ":") are skipped.
 _PROPHET = re.compile(r"صلى الله عليه وسلم|ﷺ")
-_MATN_LEAD = re.compile(r"^(?:[\s:،,.«»\"'()]|قال|قالت|فقال|فقالت|وقال|يقول|أنه|انه)+")
+# Whole words only: «قال» is not taken out of «قالت» or «فقالوا» (leaving «ت», «وا»).
+_MATN_LEAD = re.compile(
+    r"^(?:[\s:،,.«»\"'()]|(?:قال|قالت|قالا|قالوا|فقال|فقالت|فقالوا|وقال|وقالت|يقول|أنه|انه)(?![ء-ي]))+"
+)
 # Shorter matns get no vector of their own: a 4-word text lands close to almost any short
 # query (measured: «قيل لي أنت منهم» at 0.86 for «صوموا تصحوا»). Their words are still found
 # exactly through the literal-quote index, and the whole narration keeps its vector.

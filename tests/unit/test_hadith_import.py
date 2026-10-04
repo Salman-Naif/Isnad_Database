@@ -110,12 +110,12 @@ def test_csv_with_the_book_name_as_header():
 
 
 def test_csv_of_numbers_and_texts_without_header():
-    # github.com/mhashim6/Open-Hadith-Data — with invisible direction marks in the text
+    # numbers and texts, with invisible direction marks in the text
     data = f'"1"," ‏{H1} "\n"2"," {H2} "\n"5","{H2} مرة أخرى"\n'.encode()
     records = read_collection(data, "ibn-maja.csv").records
     assert [r.id for r in records] == ["1", "2", "5"]
     assert records[0].text == H1  # marks and extra spaces removed, diacritics kept
-    assert records[0].source == "سنن ابن ماجه"  # the dataset's file name, as the Arabic title
+    assert records[0].source == "سنن ابن ماجه"  # the file's name, as the Arabic title
 
 
 def test_csv_with_named_columns_and_semicolons():
@@ -175,5 +175,15 @@ def test_no_matn_when_it_cannot_be_told_apart(text):
     ("Sunan al Tirmidhi", "جامع الترمذي"), ("Sunan Ibn Maja", "سنن ابن ماجه"), ("ibnmajah", "سنن ابن ماجه"),
     ("كتاب آخر", "كتاب آخر"),
 ])
-def test_dataset_names_become_arabic_titles(name, title):
+def test_file_names_become_arabic_titles(name, title):
     assert arabic_title(name) == title
+
+
+@pytest.mark.parametrize(("text", "start"), [
+    ("حدثنا قتيبة عن عائشة أنها سألت النبي صلى الله عليه وسلم فقالت يا رسول الله أنعتمر بعد الحج قال نعم والعمرة كفارة",
+     "يا رسول الله"),
+    ("حدثنا ابن عياش أن وفد الجن قدموا على النبي صلى الله عليه وسلم فقالوا يا محمد انه أمتك أن يستنجوا بعظم أو روثة",
+     "يا محمد"),
+])
+def test_the_matn_starts_at_a_whole_word(text, start):
+    assert matn_of(text).startswith(start)

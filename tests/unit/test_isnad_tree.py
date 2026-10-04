@@ -145,3 +145,36 @@ def test_tahwil_with_a_space_after_the_waw_still_starts_another_chain():
 def test_wahuwa_after_a_name_is_the_story_not_a_second_narrator():
     chains, _ = extract_chains(IBN_MAJAH_4227)
     assert chains[-1][-1] == "عمر بن الخطاب"
+
+
+@pytest.mark.parametrize(("text", "firsts"), [
+    # Sunan Abi Dawud 714: the compiler's own words after «ح»
+    ("حدثنا عثمان بن أبي شيبة، حدثنا محمد بن بشر، ح قال أبو داود: وحدثنا القعنبي، حدثنا مالك",
+     ["عثمان بن أبي شيبة", "القعنبي"]),
+    # Sunan Abi Dawud 1140: the second chain opens with «وعن»
+    ("حدثنا مسدد، عن إسماعيل بن رجاء، عن أبيه، عن أبي سعيد الخدري، ح وعن قيس بن مسلم، عن طارق بن شهاب",
+     ["مسدد", "قيس بن مسلم"]),
+    # Musnad Ahmad 22017: the second chain opens with a name
+    ("حدثنا إسماعيل، عن سعيد الجريري، عن أبي الورد ح ويزيد بن هارون، أخبرنا الجريري، عن أبي الورد",
+     ["إسماعيل", "يزيد بن هارون"]),
+])
+def test_every_way_a_bare_tahwil_is_written_starts_another_chain(text, firsts):
+    chains, _ = extract_chains(text)
+    assert [c[0] for c in chains] == firsts
+    assert not any("ح" in name.split() for chain in chains for name in chain)
+
+
+def test_a_tahwil_cut_at_the_end_of_the_head_is_not_a_narrator():
+    # Muslim ط التركية 1870: no Prophet ﷺ named in the first 400 characters, which end in «(ح»
+    text = "وحدثنا ابن نمير، حدثنا أبي . (ح) وحدثنا أبو بكر بن أبي شيبة، حدثنا أبو أسامة . (ح) وحدثنا " * 6
+    chains, _ = extract_chains(text)
+    assert all(name not in ("ح", "(ح") for chain in chains for name in chain)
+    assert chains[0] == ["ابن نمير", "والد ابن نمير"]
+
+
+def test_stray_full_stops_are_not_narrators():
+    # Sunan Abi Dawud 209 as the edition prints it: «حدثنا.», and «عن حديث حدثه» (a report, not a man)
+    text = "حدثنا. عبد الله بن مسلمة القعنبي، قال: حدثنا أبي، عن هشام بن عروة، عن أبيه، عن حديث حدثه، عن علي بن أبي طالب، قال: قلت للمقداد"
+    [chain], _ = extract_chains(text)
+    assert chain[:2] == ["عبد الله بن مسلمة القعنبي", "والد عبد الله بن مسلمة القعنبي"]
+    assert "." not in chain and "حديث" not in chain

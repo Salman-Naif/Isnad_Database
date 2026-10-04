@@ -160,7 +160,9 @@
 									"    pm.test(`أعلى نتيجة من المصدر المتوقع: ${expected}`, () => pm.expect(top && top.source).to.include(expected));",
 									"    pm.test(`التشابه لا يقل عن ${minSim}`, () => pm.expect(top ? top.similarity : 0).to.be.at.least(minSim));",
 									"  } else {",
-									"    pm.test(\"لا يوجد تطابق قوي (أقل من 0.3)\", () => pm.expect(top ? top.similarity : 0).to.be.below(0.3));",
+									"    // The website's «no match»: below 0.60, or below 0.75 with under 60% of the words in common",
+									"    const noMatch = !top || top.similarity < 0.6 || (top.similarity < 0.75 && top.word_overlap < 0.6);",
+									"    pm.test(\"لا يوجد تطابق في المصادر (بعتبات الموقع)\", () => pm.expect(noMatch, `التشابه ${top && top.similarity}، الكلمات المشتركة ${top && top.word_overlap}`).to.be.true);",
 									"  }",
 									"}"
 								]

@@ -29,8 +29,17 @@ PROPHET = "النبي ﷺ"
 # Where the chain ends: the Prophet ﷺ named (after clean(), «ﷺ» reads «صلى الله عليه وسلم»).
 _PROPHET_NAMED = re.compile(r"صلى الله عليه وسلم")
 # «ح» (تحويل): another chain of the same hadith begins.
-# «ح وحدثنا», or «ح و حدثنا» with the و apart (consumed, so it isn't read as a name).
-_TAHWIL = re.compile(r"(?:^|[\s،,])ح\s*[،,]?\s+(?:و\s+)?(?=و?(?:حدث|أخبر|أنبأ|ثنا))")
+# «ح وحدثنا», «ح و حدثنا» with the و apart (consumed, so it isn't read as a name), or «(ح)» as
+# some printed editions write it (Shamela's Muslim ط التركية, al-Tirmidhi ت بشار).
+_TAHWIL = re.compile(
+    # «(ح)» in parentheses is a tahwil wherever it stands («(ح) قال: وحدثني…», «(ح) وسريج…»)
+    r"\s*\(\s*ح\s*\)\s*[،,.]?\s*(?:قال:?\s*)?"
+    # a bare «ح» only before the next chain: «ح وحدثنا», «ح وعن قيس», «ح ويزيد بن هارون», or the
+    # compiler's own «ح قال أبو داود: وحدثنا» (his words consumed, so he isn't read as a narrator)
+    r"|(?:^|[\s،,.])ح\s*[،,.]?\s+(?:و\s+)?(?:قال(?:\s+[^\s:]+){0,2}:?\s*)?(?=و|حدث|أخبر|أنبأ|ثنا|عن\s)"
+)
+# A «ح» or «(ح» the 400-character cut left at the end of a chain with no Prophet ﷺ named.
+_TRAILING_TAHWIL = re.compile(r"(?:^|[\s(])ح\)?\s*$")
 # Words of transmission between two narrators (with an optional و / ف before them).
 _LINKS = (
     "حدثنا|حدثني|حدثناه|حدثنيه|حدثه|حدثهم|حدثتني|أخبرنا|أخبرني|أخبرناه|أخبره|أخبرهم|أخبرتني|"
@@ -49,7 +58,8 @@ _STOP_WORDS = {
 # Narrators whose name begins with و — not "and so-and-so".
 _WAW_NAMES = {"وكيع", "وهب", "وهيب", "واصل", "وائل", "ورقاء", "وبرة", "وراد", "وحشي", "وابصة", "وردان"}
 # A single word that can't identify a narrator on its own.
-_TOO_GENERIC = {"عبد", "الآخران", "الآخرون", "غيره", "أبي", "أبيه", "جده", "أمه", "رجل", "رجلا", "أصحابه", "أحد"}
+_TOO_GENERIC = {"عبد", "حديث", "الآخران", "الآخرون", "غيره", "أبي", "أبيه", "جده", "أمه", "رجل", "رجلا", "أصحابه", "أحد"}
+_ARABIC_LETTER = re.compile(r"[ء-ي]")
 MAX_NAME_WORDS = 7
 MIN_CHAIN = 2  # fewer names than this is more likely a stray phrase than a chain
 MAX_CHAIN = 20
@@ -183,7 +193,8 @@ def _names_in(piece: str) -> tuple[list[str], bool]:
 def _usable(name: str) -> bool:
     first = name.split()[0]
     return (
-        name not in _TOO_GENERIC and name not in _NOT_NAMES and first not in _TEXT_OPENERS
+        bool(_ARABIC_LETTER.search(name))  # not a verse number or a bracket («٩٢», «﴿»)
+        and name not in _TOO_GENERIC and name not in _NOT_NAMES and first not in _TEXT_OPENERS
         and not _PROPHET_WORDS.search(name) and len(name.split()) <= MAX_NAME_WORDS
     )
 
@@ -202,7 +213,9 @@ def _chain(part: str, ends_at_prophet: bool) -> list[str]:
             if piece.strip() not in ("-", "–") or not previous:
                 previous = piece.strip()
             continue
-        raw = piece.strip()
+        raw = piece.strip(" .")  # «حدثنا أبي .», or a stray «.» the edition left after «حدثنا»
+        if not raw:
+            continue
         first = raw.split()[0]
         if first in _CLARIFIES and names:  # «عبد العزيز - يعني ابن محمد -»
             detail = raw.split()[1:]
@@ -237,7 +250,7 @@ def extract_chains(text: str) -> tuple[list[list[str]], bool]:
     """(chains in the order written, whether they reach the Prophet ﷺ)."""
     plain = clean(text)
     named = _PROPHET_NAMED.search(plain)
-    head = plain[: named.start()] if named else plain[:400]
+    head = plain[: named.start()] if named else _TRAILING_TAHWIL.sub("", plain[:400])
     parts = _TAHWIL.split(head)
     # Only the last «ح» chain runs on to the Prophet ﷺ; the others stop where they join it.
     chains = [_chain(part, bool(named) and i == len(parts) - 1) for i, part in enumerate(parts)]

@@ -36,26 +36,35 @@ them.
   hadith number in its id (`1681-20`), its chapter, its chain as Shamela links its narrators to
   its narrators database (where the edition links them), its matn (where the edition marks it),
   and the ruling the edition records (below).
-- **Editions** (one per book; converted 2026-10-03):
+- **Editions** (one per book; converted 2026-10-04):
 
   | Book | Shamela edition (book id) | Hadiths | Chain from the edition's links | Rulings |
   | --- | --- | --- | --- | --- |
-  | صحيح البخاري | ط السلطانية (1681) | 7,330 | 7,130 | — |
-  | صحيح مسلم | ط التركية (711) | 7,620 | 6,426 | — |
+  | صحيح البخاري | ط السلطانية (1681) | 7,329 | 7,130 | — |
+  | صحيح مسلم | ط التركية (711) | 7,621 | 6,427 | — |
   | سنن أبي داود | ت محمد محيي الدين عبد الحميد (1726) | 5,284 | read from the wording | 5,173 — الألباني |
-  | جامع الترمذي | ت بشار عواد معروف (7895) | 3,948 | 3,870 | 2,692 — الترمذي |
+  | جامع الترمذي | ت بشار عواد معروف (7895) | 3,947 | 3,870 | 2,692 — الترمذي |
   | سنن النسائي | ط المصرية (829) | 5,764 | 5,611 | — |
   | سنن ابن ماجه | ت محمد فؤاد عبد الباقي (1198) | 4,343 | read from the wording | 4,298 — الألباني |
-  | موطأ الإمام مالك | رواية يحيى، ت محمد مصطفى الأعظمي (28107) | 2,079 | 1,614 | — |
-  | مسند الإمام أحمد بن حنبل | ط الرسالة (25794) | 26,689 | read from the wording | 25,241 — شعيب الأرنؤوط وآخرون |
+  | موطأ الإمام مالك | رواية يحيى، ت محمد مصطفى الأعظمي (28107) | 2,891 | 2,448 | — |
+  | مسند الإمام أحمد بن حنبل | ط الرسالة (25794) | 26,636 | read from the wording | 25,288 — شعيب الأرنؤوط وآخرون |
   | سنن الدارمي | not installed yet | — | — | — |
+  | **All eight** | | **63,815** | **25,486** | **37,451** |
 
   A narration with several chains («ح») is left to the database, which reads all its chains from
-  the wording and branches the tree where they meet. Editors' introductions are left out (the
+  the wording and branches the tree where they meet. Each edition's own numbering is kept: the
+  Muwatta ت الأعظمي prints two numbers on many paragraphs («٤/ ١ -»), Muslim
+  «١٢٨ - (٧٤)» (the running number, then Abd al-Baqi's), and Musnad Ahmad numbers the parts of a
+  long hadith «٨٥٧١/ ١ -». What is not a hadith is left out: the editors' introductions (the
   import starts at the book's own numbering; for Muslim this leaves out the 9 entries of his
-  preface). Embedding all eight: 12.3 M tokens ≈ $0.25 (`scripts/import_hadiths.py --estimate`).
+  preface), each volume's title page and the introduction Musnad Ahmad ط الرسالة repeats at its
+  head, the basmala before each book, the printer's closing note after each volume of Muslim
+  ط التركية, the copyist's «كمل كتاب…» lines of the Muwatta, and the places an edition leaves
+  empty («……»). Embedding all eight: about 12.3 M tokens ≈ $0.25
+  (`scripts/import_hadiths.py --estimate`).
 - **Taken:** the hadith texts, the narrator links, the chapter titles, and the ruling recorded
-  for each hadith. **Not taken:** the editions' introductions and footnotes — their notes,
+  for each hadith (also where a page keeps its footnotes inside its text, as a few pages of
+  Musnad Ahmad do). **Not taken:** the editions' introductions and footnotes — their notes,
   variant readings and takhrij — beyond the ruling phrase.
 
 ## Rulings — only as the sources record them
@@ -94,7 +103,10 @@ answer a question («الدرر السنية (dorar.net)»).
     Shamela and the publishers (مؤسسة الرسالة for Musnad Ahmad) for permission.**
 - What visitors see is the Arabic text of a hadith, its book, its chain and its ruling with its
   author; no translation is shown.
-- The tests quote a handful of short narrations (classical text) in the editions' markup.
+- The tests quote a handful of short narrations (classical text) in the editions' markup. The
+  website's verification cases and their report (Isnad_Website `docs/evaluation/verification*`)
+  quote the first ten words of 64 hadiths and the opening words of each first result, without
+  the editions' diacritics.
 
 ## How the data is used and checked
 
