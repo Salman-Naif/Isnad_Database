@@ -52,6 +52,7 @@ class AdminInfo(BaseModel):
     username: str
     created_at: str = ""
     must_change_password: bool = False
+    is_owner: bool = False  # the system manager: adds and deletes users, can't be deleted
 
 
 class ChangePasswordRequest(BaseModel):

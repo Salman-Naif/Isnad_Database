@@ -3,6 +3,7 @@
 
 const API = "/api";
 const CURRENT_ADMIN_ID = Number(document.currentScript.dataset.adminId);
+const IS_OWNER = document.currentScript.dataset.isOwner === "true";
 
 const $ = (id) => document.getElementById(id);
 
@@ -649,11 +650,12 @@ async function loadAdmins() {
       const text = el("div", undefined, "person-text");
       text.append(el("strong", admin.username), el("span", admin.created_at ? `أُضيف ${formatDate(admin.created_at)}` : "", "muted small"));
       const tags = el("div", undefined, "person-tags");
+      if (admin.is_owner) tags.append(el("span", "مدير النظام", "tag you"));
       if (admin.id === CURRENT_ADMIN_ID) tags.append(el("span", "أنت", "tag you"));
       if (admin.must_change_password) tags.append(el("span", "كلمة مرور افتراضية", "tag weak"));
       text.append(tags);
       li.append(el("span", admin.username.slice(0, 1).toUpperCase(), "avatar"), text);
-      if (admin.id !== CURRENT_ADMIN_ID) {
+      if (IS_OWNER && !admin.is_owner && admin.id !== CURRENT_ADMIN_ID) {
         const del = el("button", undefined, "icon-btn danger");
         del.type = "button";
         del.title = "حذف المستخدم";
@@ -810,7 +812,7 @@ document.addEventListener("DOMContentLoaded", () => {
     resizeTimer = setTimeout(() => lastDaily && dailyChart(lastDaily), 200);
   });
 
-  $("admin-form").addEventListener("submit", addAdmin);
+  $("admin-form")?.addEventListener("submit", addAdmin);
   $("password-form").addEventListener("submit", changeOwnPassword);
   $("new-own-password").addEventListener("input", onNewPasswordInput);
   setupPasswordToggles();

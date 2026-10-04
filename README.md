@@ -51,7 +51,7 @@ and data keep their own licenses: [`THIRD_PARTY_LICENSES.md`](THIRD_PARTY_LICENS
 | المصادر — Sources           | Drag-and-drop upload; list of uploaded files with download and delete                |
 | التحكم بالموقع — Site       | Maintenance mode and message, search/chat switches, announcement, main website URL   |
 | الإحصائيات والتقارير — Reports | Visits, unique visitors, searches, questions, daily chart, top queries; Excel/PDF export |
-| المستخدمون — Users          | Add and remove authorized users                                                      |
+| المستخدمون — Users          | Authorized users; the system manager adds and removes them                           |
 
 ### System checks
 
@@ -152,6 +152,10 @@ After signing in, a banner asks you to change the password: **المستخدمو
 Do it right after the first deploy — until then anyone with the URL and this password can sign in.
 New passwords need at least 8 characters. To use other defaults, set `ADMIN_USERNAME` /
 `ADMIN_PASSWORD` before the first deploy.
+
+This user (`ADMIN_USERNAME`) is the **system manager**: the only one who can add and delete
+users, and no one — not even from `scripts/manage_admins.py` — can delete it. Other users can
+upload, control the site and read reports, and change their own password.
 
 ## Running locally (optional)
 

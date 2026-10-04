@@ -64,6 +64,15 @@ def require_admin(admin: auth.Admin = Depends(require_signed_in)) -> auth.Admin:
     return admin
 
 
+def require_owner(admin: auth.Admin = Depends(require_admin)) -> auth.Admin:
+    """The system manager — the only one who adds and deletes users."""
+    if not auth.is_owner(admin):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="إضافة المستخدمين وحذفهم لمدير النظام فقط"
+        )
+    return admin
+
+
 def require_site_key(x_api_key: str | None = Header(default=None)) -> None:
     """Reject the request unless it carries the main website's SITE_API_KEY."""
     expected = get_settings().site_api_key

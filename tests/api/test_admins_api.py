@@ -91,3 +91,32 @@ def test_change_password_rejects_bad_input(admin_client, current, new, message):
     res = admin_client.post("/api/auth/change-password", json={"current_password": current, "new_password": new})
     assert res.status_code == 422
     assert message in res.json()["detail"]
+
+
+def test_only_the_system_manager_adds_and_deletes_users(admin_client, client):
+    # The oldest account manages users (here: «admin»; on the service, ADMIN_USERNAME «salman»)
+    second = admin_client.post("/api/admins", json={"username": "second", "password": "another-pass"}).json()
+    third = admin_client.post("/api/admins", json={"username": "third", "password": "another-pass"}).json()
+    listed = {a["username"]: a["is_owner"] for a in admin_client.get("/api/admins").json()}
+    assert listed == {"admin": True, "second": False, "third": False}
+
+    admin_client.post("/api/auth/logout")
+    assert client.post("/api/auth/login", json={"username": "second", "password": "another-pass"}).status_code == 200
+    assert client.post("/api/admins", json={"username": "fourth", "password": "another-pass"}).status_code == 403
+    assert client.delete(f"/api/admins/{third['id']}").status_code == 403
+    owner = next(a for a in client.get("/api/admins").json() if a["is_owner"])
+    assert client.delete(f"/api/admins/{owner['id']}").status_code == 403
+    assert "إضافة المستخدمين وحذفهم لمدير النظام فقط" in client.get("/").text
+    assert second["is_owner"] is False
+
+
+def test_the_system_manager_can_never_be_deleted(admin, monkeypatch):
+    from app.config import get_settings
+    from app.services import auth
+
+    monkeypatch.setattr(get_settings(), "admin_username", "salman")
+    salman = auth.create_admin("salman", "salman-password")
+    assert auth.owner_id() == salman.id  # ADMIN_USERNAME, though not the oldest account
+    with pytest.raises(auth.AuthError, match="مدير النظام"):
+        auth.delete_admin(salman.id)
+    assert auth.delete_admin(admin.id)

@@ -166,6 +166,7 @@ def test_manage_admins_create_list_reset_delete(monkeypatch, capsys, client):
     import scripts.manage_admins as manage
 
     monkeypatch.setattr(manage, "ask_password", lambda: "a-long-password")
+    run_script(monkeypatch, "manage_admins", "create", "manager")  # the first: the system manager
     run_script(monkeypatch, "manage_admins", "create", "editor")
     assert auth.authenticate("editor", "a-long-password") is not None
 
@@ -181,6 +182,8 @@ def test_manage_admins_create_list_reset_delete(monkeypatch, capsys, client):
 
     with pytest.raises(SystemExit):
         run_script(monkeypatch, "manage_admins", "delete", "editor")
+    with pytest.raises(SystemExit, match="مدير النظام"):
+        run_script(monkeypatch, "manage_admins", "delete", "manager")
 
 
 def test_manage_admins_rejects_weak_passwords(monkeypatch, client):

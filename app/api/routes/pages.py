@@ -12,7 +12,7 @@ from fastapi.templating import Jinja2Templates
 
 from app.api.deps import get_current_admin
 from app.config import BASE_DIR, get_settings
-from app.services.auth import Admin
+from app.services.auth import Admin, is_owner
 
 templates = Jinja2Templates(directory=str(BASE_DIR / "app" / "templates"))
 
@@ -33,7 +33,7 @@ def dashboard(request: Request, admin: Admin | None = Depends(get_current_admin)
     return templates.TemplateResponse(
         request,
         "dashboard.html",
-        {"admin": admin, "max_upload_mb": get_settings().max_upload_mb},
+        {"admin": admin, "is_owner": is_owner(admin), "max_upload_mb": get_settings().max_upload_mb},
     )
 
 

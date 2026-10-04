@@ -25,13 +25,13 @@ def upload_hadiths(admin_client):
 
 def test_me(admin_client):
     body = admin_client.get("/api/auth/me").json()
-    assert set(body) == {"id", "username", "created_at", "must_change_password"}
+    assert set(body) == {"id", "username", "created_at", "must_change_password", "is_owner"}
     assert body["must_change_password"] is False
 
 
 def test_admin_list_never_includes_password_hashes(admin_client):
     admins = admin_client.get("/api/admins").json()
-    assert set(admins[0]) == {"id", "username", "created_at", "must_change_password"}
+    assert set(admins[0]) == {"id", "username", "created_at", "must_change_password", "is_owner"}
     assert "scrypt" not in json.dumps(admins)
 
 

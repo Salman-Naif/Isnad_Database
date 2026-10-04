@@ -287,12 +287,16 @@
           <h2 class="card-title">{{ icon("users", "icon sm") }} المستخدمون المصرّح لهم</h2>
           <ul id="admins-list" class="people"></ul>
 
+          {% if is_owner %}
           <h3 class="sub-title">إضافة مستخدم</h3>
           <form id="admin-form" class="stack" novalidate>
             <input id="new-username" class="input" type="text" placeholder="اسم المستخدم (بالإنجليزية)" dir="ltr" autocomplete="off" required aria-label="اسم المستخدم">
             <input id="new-password" class="input" type="password" placeholder="كلمة المرور (8 أحرف على الأقل)" dir="ltr" autocomplete="new-password" required aria-label="كلمة المرور">
             <button type="submit" class="btn secondary">{{ icon("plus") }}<span>إضافة مستخدم</span></button>
           </form>
+          {% else %}
+          <p class="muted small">إضافة المستخدمين وحذفهم لمدير النظام فقط.</p>
+          {% endif %}
           <p id="admin-message" class="alert" hidden></p>
         </div>
       </div>
@@ -306,5 +310,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', path='js/dashboard.js').path }}" data-admin-id="{{ admin.id }}"></script>
+<script src="{{ url_for('static', path='js/dashboard.js').path }}" data-admin-id="{{ admin.id }}" data-is-owner="{{ 'true' if is_owner else 'false' }}"></script>
 {% endblock %}

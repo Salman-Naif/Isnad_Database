@@ -92,8 +92,24 @@ def count_admins() -> int:
         return conn.execute("SELECT COUNT(*) FROM admins").fetchone()[0]
 
 
+def owner_id() -> int | None:
+    """The system manager: the account named ADMIN_USERNAME (the default user), or the oldest
+    account if there is none by that name. Only they add and delete users; no one deletes them."""
+    name = get_settings().admin_username
+    with connection() as conn:
+        row = conn.execute("SELECT id FROM admins WHERE username = ?", (name,)).fetchone() if name else None
+        row = row or conn.execute("SELECT id FROM admins ORDER BY id LIMIT 1").fetchone()
+    return row[0] if row else None
+
+
+def is_owner(admin: Admin) -> bool:
+    return admin.id == owner_id()
+
+
 def delete_admin(admin_id: int) -> bool:
-    """Delete a user and all their sessions."""
+    """Delete a user and all their sessions — never the system manager."""
+    if admin_id == owner_id():
+        raise AuthError("مدير النظام لا يمكن حذفه")
     with connection() as conn:
         return conn.execute("DELETE FROM admins WHERE id = ?", (admin_id,)).rowcount > 0
 
