@@ -53,3 +53,8 @@ def test_nine_books_each_with_its_compiler():
 ])
 def test_chains_end_with_the_compiler(book, compiler):
     assert book_author(book) == compiler
+
+
+def test_books_rank_in_the_order_they_are_cited():
+    ranks = [books.rank(name) for name in ("صحيح البخاري - ط السلطانية", "صحيح مسلم", "سنن ابن ماجه", "كتاب آخر")]
+    assert ranks == sorted(ranks) and ranks[0] == 0 and ranks[-1] == len(books.BOOKS)

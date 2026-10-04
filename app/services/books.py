@@ -92,6 +92,13 @@ def find(name: str) -> Book | None:
     return None
 
 
+def rank(name: str) -> int:
+    """The book's place in the order the nine books are listed and cited in (al-Bukhari, then
+    Muslim, then the Sunan…); a book outside them comes after."""
+    book = find(name)
+    return BOOKS.index(book) if book else len(BOOKS)
+
+
 def title(name: str) -> str:
     """The published title of the book a name refers to, or the name unchanged."""
     book = find(name)

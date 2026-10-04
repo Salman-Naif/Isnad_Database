@@ -156,3 +156,13 @@ def test_a_vector_without_its_stored_text_is_not_returned(admin_client, site_hea
     res = admin_client.post("/api/v1/search", headers=site_headers,
                             json={"query": "إنما الأعمال بالنيات وإنما لكل امرئ ما نوى", "top_k": 3})
     assert res.status_code == 200 and res.json()["matches"] == []
+
+
+def test_a_quote_in_several_books_comes_in_the_books_order(admin_client, site_headers):
+    # Uploaded Ibn Majah first, then Muslim, then al-Bukhari: the results still start with al-Bukhari
+    for name, book in (("ibnmajah.json", "سنن ابن ماجه"), ("muslim.json", "صحيح مسلم"), ("bukhari.json", "صحيح البخاري")):
+        record = {**HADITH, "id": name, "source": book, "hukm": "ضعيف جدا" if book == "سنن ابن ماجه" else ""}
+        assert admin_client.post("/api/sources", files={"file": (name, json.dumps([record]).encode())}).status_code == 202
+    res = admin_client.post("/api/v1/search", headers=site_headers,
+                            json={"query": "إنما الأعمال بالنيات وإنما لكل امرئ ما نوى", "top_k": 3})
+    assert [m["source"] for m in res.json()["matches"]] == ["صحيح البخاري", "صحيح مسلم", "سنن ابن ماجه"]

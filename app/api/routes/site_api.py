@@ -51,6 +51,9 @@ def search(
         # Word-for-word quotes first (similarity 1.0), then the closest meanings. A hadith can
         # come back through both, or through both of its vectors (narration, matn): once only.
         exact = [{**hit, "similarity": 1.0} for hit in store.get(text_index.find_quote(payload.query))]
+        # A quote found word for word in several books: listed in the books' order (al-Bukhari,
+        # Muslim, then the Sunan…), not in the order the files were uploaded.
+        exact.sort(key=lambda hit: books.rank(hit["metadata"].get("reference") or hit["metadata"].get("source") or ""))
         # Extra candidates, since a hadith's two vectors often both rank near the top.
         close = store.query(embedder.encode_query(query), top_k=payload.top_k * 3)
     except (EmbeddingError, VectorStoreError) as exc:
