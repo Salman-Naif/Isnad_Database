@@ -105,3 +105,12 @@ def test_pdf_shows_visitor_markup_as_text(admin_client, hostile_activity, monkey
     res = admin_client.get("/api/reports/export?format=pdf&from=2026-09-01&to=2026-09-01")
     assert res.status_code == 200
     assert res.content.startswith(b"%PDF")
+
+
+def test_every_verdict_the_website_sends_has_an_arabic_label(client):
+    # the website's verdicts, including «meaning» for an English text (Isnad_Website schemas.Verdict)
+    for n, result in enumerate(("verified", "found", "distorted", "meaning", "no_match", "explore")):
+        add_event("search", f"2026-09-01 10:0{n}:00", query=f"q{n}", result=result)
+    s = reports.build_summary(date(2026, 9, 1), date(2026, 9, 1))
+    labels = {i.label for i in s.search_results}
+    assert "بالمعنى (نص إنجليزي)" in labels and not labels & {"verified", "found", "distorted", "meaning", "no_match"}

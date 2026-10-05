@@ -24,6 +24,7 @@ RESULT_LABELS = {
     "verified": "موثّق",
     "found": "موجود بلا حكم",
     "distorted": "تحريف محتمل",
+    "meaning": "بالمعنى (نص إنجليزي)",  # an English text whose meaning is a hadith of the sources
     "no_match": "لا تطابق",
     "explore": "بحث بالمعنى",  # the website's «ابحث بالمعنى»: hadiths about an idea, no verdict
 }

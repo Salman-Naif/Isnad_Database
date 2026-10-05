@@ -53,6 +53,18 @@ and data keep their own licenses: [`THIRD_PARTY_LICENSES.md`](THIRD_PARTY_LICENS
 | الإحصائيات والتقارير — Reports | Visits, unique visitors, searches, questions, daily chart, top queries; Excel/PDF export |
 | المستخدمون — Users          | Authorized users; the system manager adds and removes them                           |
 
+### Screenshots
+
+The dashboard is for the team only, so here is every page. They were taken from a local copy
+holding two of the books (Sunan Ibn Majah, Jami' at-Tirmidhi), with test activity and a test
+account; the live service holds the eight editions. The OpenRouter account's usage is blurred.
+
+| | |
+| --- | --- |
+| ![الحالة — Status: figures for the last 30 days and a live check of every part](docs/screenshots/status.png) | ![المصادر — Sources: upload, and the files indexed](docs/screenshots/sources.png) |
+| ![التحكم بالموقع — Site controls: maintenance, search/chat switches, announcement](docs/screenshots/control.png) | ![المستخدمون — Users: the system manager adds and removes users](docs/screenshots/admins.png) |
+| ![الإحصائيات والتقارير — Reports: visits, searches, questions, verdicts; Excel/PDF export](docs/screenshots/reports.png) | ![Sign-in](docs/screenshots/login.png) |
+
 ### System checks
 
 App database · vector database · embedding model · OCR (vision model, Tesseract fallback) ·
