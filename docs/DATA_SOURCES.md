@@ -9,7 +9,7 @@ challenge's reference pack names for the books of the Sunnah. The team decides w
 are approved before anything is uploaded; Isnad never adds a hadith, a ruling or a source of
 its own.
 
-## The nine books
+## The eight books
 
 Every text in the database belongs to one of these books, stored and shown under its published
 title with its compiler (`app/services/books.py`); every isnad tree ends with the compiler.
@@ -24,7 +24,6 @@ title with its compiler (`app/services/books.py`); every isnad tree ends with th
 | سنن ابن ماجه | السنن | الإمام أبو عبد الله محمد بن يزيد القزويني ابن ماجه | 273 |
 | موطأ الإمام مالك | الموطأ (رواية يحيى بن يحيى الليثي) | الإمام أبو عبد الله مالك بن أنس الأصبحي | 179 |
 | مسند الإمام أحمد بن حنبل | المسند | الإمام أبو عبد الله أحمد بن محمد بن حنبل الشيباني | 241 |
-| سنن الدارمي | المسند الجامع (مسند الدارمي) | الإمام أبو محمد عبد الله بن عبد الرحمن الدارمي | 255 |
 
 Titles, compilers and dates follow the printed editions, as Shamela and al-Dorar al-Saniyya give
 them.
@@ -48,7 +47,6 @@ them.
   | سنن ابن ماجه | ت محمد فؤاد عبد الباقي (1198) | 4,343 | read from the wording | 4,298 — الألباني |
   | موطأ الإمام مالك | رواية يحيى، ت محمد مصطفى الأعظمي (28107) | 2,891 | 2,448 | — |
   | مسند الإمام أحمد بن حنبل | ط الرسالة (25794) | 26,636 | read from the wording | 25,288 — شعيب الأرنؤوط وآخرون |
-  | سنن الدارمي | not installed yet | — | — | — |
   | **All eight** | | **63,815** | **25,486** | **37,451** |
 
   A narration with several chains («ح») is left to the database, which reads all its chains from
@@ -124,7 +122,7 @@ answer a question («الدرر السنية (dorar.net)»).
 | Place | How |
 | --- | --- |
 | `scripts/import_shamela.py`, `scripts/shamela/ShamelaExport.java` | Convert the Shamela editions (tests: `tests/unit/test_import_shamela.py`) |
-| `app/services/books.py` | The nine books' titles and compilers |
+| `app/services/books.py` | The eight books' titles and compilers |
 | `scripts/import_hadiths.py` | Measures the cost of, and indexes, the converted files |
 | `app/services/isnad_tree.py` | Reads chains from the wording where an edition doesn't link them |
 | `README.md` → "Hadith books from المكتبة الشاملة" | How to convert and upload them |

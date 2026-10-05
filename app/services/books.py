@@ -1,5 +1,5 @@
 """
-The nine books of hadith Isnad holds, under their published titles, with their compilers.
+The eight books of hadith Isnad holds, under their published titles, with their compilers.
 
 Every name a book can arrive with — an English name in a CSV file, the Arabic title in
 a JSON collection, a Shamela edition («صحيح البخاري - ط السلطانية»), a file name, a shorter or
@@ -9,8 +9,7 @@ texts uploaded before this list existed).
 
 Titles, compilers and dates of death (Hijri) follow the standard printed editions and the
 reference platforms named in the challenge's reference pack (dorar.net, shamela.ws). Author
-fields in uploaded files are not used: one gave Sunan al-Darimi's compiler as «عبد الرحمن بن
-عبد الله» — he is Abu Muhammad ʿAbdullah ibn ʿAbd al-Rahman al-Darimi.
+fields in uploaded files are not used.
 """
 
 import re
@@ -58,9 +57,6 @@ BOOKS = (
     Book("مسند الإمام أحمد بن حنبل", "المسند",
          "الإمام أبو عبد الله أحمد بن محمد بن حنبل الشيباني", "أحمد بن حنبل", 241,
          ("ahmad", "ahmed", "musnad", "مسند أحمد")),
-    Book("سنن الدارمي", "المسند الجامع (مسند الدارمي)",
-         "الإمام أبو محمد عبد الله بن عبد الرحمن الدارمي", "الدارمي", 255,
-         ("darami", "darimi", "مسند الدارمي")),
 )
 
 _LETTERS = str.maketrans({"أ": "ا", "إ": "ا", "آ": "ا", "ى": "ي", "ة": "ه"})
@@ -85,7 +81,7 @@ def find(name: str) -> Book | None:
     key = _key(name)
     if key in _BY_KEY:
         return _BY_KEY[key]
-    # Longest names first, so «مسند الدارمي» is not taken for «المسند» (Ahmad).
+    # Longest names first: the most specific name the key holds decides.
     for alias in sorted(_BY_KEY, key=len, reverse=True):
         if (alias in key) if alias.isascii() else key.startswith(alias):
             return _BY_KEY[alias]
@@ -93,7 +89,7 @@ def find(name: str) -> Book | None:
 
 
 def rank(name: str) -> int:
-    """The book's place in the order the nine books are listed and cited in (al-Bukhari, then
+    """The book's place in the order the eight books are listed and cited in (al-Bukhari, then
     Muslim, then the Sunan…); a book outside them comes after."""
     book = find(name)
     return BOOKS.index(book) if book else len(BOOKS)

@@ -114,7 +114,7 @@ isnad/
 │   │   ├── ocr.py              # Page layout, vision-model OCR with cross-check, Tesseract
 │   │   ├── text_processing.py  # Arabic cleaning and chunking
 │   │   ├── hadith_import.py    # Hadith collections in JSON / CSV → records; matn; titles
-│   │   ├── books.py            # The nine books: published titles, compilers
+│   │   ├── books.py            # The eight books: published titles, compilers
 │   │   ├── text_index.py       # Literal index (SQLite FTS5) for word-for-word quotes
 │   │   ├── embeddings.py       # Text → vector
 │   │   ├── vector_store.py     # ChromaDB storage and search
@@ -291,7 +291,7 @@ al-Albani's in Sunan Abi Dawud and Sunan Ibn Majah, the editors' in Musnad Ahmad
 phrase only). Nothing else of the footnotes is taken, and no ruling is ever made up (`--hukm` is
 for one the team decides). A narration with several chains («ح») is left to the database.
 
-The eight editions converted (all but Sunan al-Darimi, not installed yet): 63,815 hadiths, 25,486
+The eight editions converted: 63,815 hadiths, 25,486
 with the edition's chain, 37,451 with a recorded ruling; embedding them all costs $0.25. The
 files are written to `data/structured/`, which is never committed. Editions and rights:
 [docs/DATA_SOURCES.md](docs/DATA_SOURCES.md).

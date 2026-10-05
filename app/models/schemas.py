@@ -158,7 +158,7 @@ class SiteMatch(BaseModel):
     sanad_extracted: bool = False
     topic: str | None = None
     source: str | None = None
-    # The book's compiler and his year of death, for one of the nine books (app/services/books.py)
+    # The book's compiler and his year of death, for one of the eight books (app/services/books.py)
     compiler: str | None = None
 
 
