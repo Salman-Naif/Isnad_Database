@@ -21,7 +21,7 @@ from app.models.schemas import (
     SiteSearchResponse,
     SiteSettings,
 )
-from app.services import books, isnad_tree, sanad, text_index
+from app.services import books, chapter_titles, isnad_tree, sanad, text_index
 from app.services.embeddings import EmbeddingError, EmbeddingService
 from app.services.events import record_event
 from app.services.site_settings import get_site_settings
@@ -33,9 +33,11 @@ from app.services.vector_store import VectorStore, VectorStoreError
 # similarity shown is not changed.
 SUBJECT_POOL = 60
 SUBJECT_WEIGHT = 0.15
-# A search by title: more texts, and every one holding the title's words before any that doesn't.
+# A search by title: more texts, ranked by how close their chapter's title is to it
+# (chapter_titles), and every one holding the title's words before any that doesn't.
 TITLE_POOL = 100
 TITLE_WEIGHT = 1.0
+CHAPTER_WEIGHT = 0.8
 
 router = APIRouter(prefix="/v1", tags=["site api"], dependencies=[Depends(require_site_key)])
 
@@ -87,8 +89,20 @@ def search(
                                                               whole=True))
             return found
 
+        chapters: dict[str, float] = {}
+        if payload.by_title:
+            try:
+                chapters = chapter_titles.closeness(
+                    embedder, payload.query, [hit["metadata"].get("topic") or "" for hit in close])
+            except EmbeddingError:
+                chapters = {}  # the texts keep their order by meaning and words
+
+        def score(hit: dict) -> float:
+            chapter = chapters.get(hit["metadata"].get("topic") or "", 0.0)
+            return hit["similarity"] + weight * share(hit) + CHAPTER_WEIGHT * chapter
+
         # A stable sort: texts with as many of the subject's words keep their order by meaning.
-        close.sort(key=lambda hit: -(hit["similarity"] + weight * share(hit)))
+        close.sort(key=lambda hit: -score(hit))
 
     matches: list[SiteMatch] = []
     seen: set[str] = set()

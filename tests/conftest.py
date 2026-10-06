@@ -61,6 +61,9 @@ class FakeEmbedder:
     def encode_query(self, text: str) -> list[float]:
         return self.encode_one(text)
 
+    def encode_title_query(self, text: str) -> list[float]:
+        return self.encode_one(text)
+
     def encode_one(self, text: str) -> list[float]:
         vec = [0.0] * self.DIM
         for ch in text:

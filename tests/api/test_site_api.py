@@ -196,3 +196,39 @@ def test_a_search_by_title_puts_every_hadith_holding_it_first(admin_client, site
                                 json={"query": "الصيام", "top_k": 2, "by_title": True}).json()["matches"]
 
     assert {m["text"] for m in matches} == {fasting["text"], other["text"]}  # both hold it: by the text or chapter
+
+
+def _two_chapters(admin_client):
+    charity = {"id": "1", "source": "سنن ابن ماجه", "sanad": [], "topic": "باب فضل الصدقة",
+               "text": "قال رسول الله صلى الله عليه وسلم ما نقص مال من عطاء"}
+    prayer = {"id": "2", "source": "سنن ابن ماجه", "sanad": [], "topic": "باب مواقيت الصلاة",
+              "text": "قال رسول الله صلى الله عليه وسلم الصلاة على وقتها"}
+    res = admin_client.post("/api/sources", files={"file": ("c.json", json.dumps([charity, prayer]).encode())})
+    assert res.json()["status"] == "ready", res.text
+    return charity, prayer
+
+
+def test_a_search_by_title_puts_the_closest_chapter_first(admin_client, site_headers, monkeypatch):
+    from app.services import chapter_titles
+
+    charity, prayer = _two_chapters(admin_client)
+    monkeypatch.setattr(chapter_titles, "closeness", lambda embedder, title, chapters: {
+        "باب فضل الصدقة": 0.9, "باب مواقيت الصلاة": 0.1})
+    matches = admin_client.post("/api/v1/search", headers=site_headers,
+                                json={"query": "العطاء", "top_k": 2, "by_title": True}).json()["matches"]
+    assert [m["text"] for m in matches] == [charity["text"], prayer["text"]]
+
+
+def test_without_chapter_vectors_a_search_by_title_still_answers(admin_client, site_headers, monkeypatch):
+    from app.services import chapter_titles
+    from app.services.embeddings import EmbeddingError
+
+    _two_chapters(admin_client)
+
+    def down(*args):
+        raise EmbeddingError("down")
+
+    monkeypatch.setattr(chapter_titles, "closeness", down)
+    res = admin_client.post("/api/v1/search", headers=site_headers,
+                            json={"query": "العطاء", "top_k": 2, "by_title": True})
+    assert res.status_code == 200 and len(res.json()["matches"]) == 2

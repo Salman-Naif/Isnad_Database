@@ -147,6 +147,10 @@ class EmbeddingService:
         """Embed a search query (with the model's query instruction, if it takes one)."""
         return self.encode_one(query_instruction(self.settings) + text)
 
+    def encode_title_query(self, text: str) -> np.ndarray:
+        """Embed a title searched for, to be compared with chapter titles («باب بر الوالدين»)."""
+        return self.encode_one(title_instruction(self.settings) + text)
+
     def _request(self, batch: list[str]) -> np.ndarray:
         if not self.settings.openrouter_api_key:
             raise EmbeddingError("OPENROUTER_API_KEY غير مضبوط — لا يمكن إنشاء التمثيلات الدلالية")
@@ -249,6 +253,15 @@ def query_instruction(settings) -> str:
     if configured:
         return configured
     return QWEN3_QUERY_INSTRUCTION if settings.embedding_model.startswith("qwen/qwen3-embedding") else ""
+
+
+QWEN3_TITLE_INSTRUCTION = "Instruct: ابحث عن عنوان الباب الذي يتناول هذا الموضوع\nQuery: "
+
+
+def title_instruction(settings) -> str:
+    """The text put before a title searched for among chapter titles (none when the query
+    instruction is turned off, or the model takes none)."""
+    return QWEN3_TITLE_INSTRUCTION if query_instruction(settings) else ""
 
 
 def _decode(embedding) -> np.ndarray:
