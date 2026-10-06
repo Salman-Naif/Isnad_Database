@@ -34,3 +34,19 @@ def test_the_oldest_titles_leave_memory_first(monkeypatch):
         chapter_titles.closeness(embedder, "س", [title])
     chapter_titles.closeness(embedder, "س", ["باب أ"])
     assert embedder.embedded.count("باب أ") == 2  # left memory when «باب ج» came, embedded again
+
+
+def test_only_titles_that_name_a_subject_count():
+    for title in ("بَابُ بِرِّ الْوَالِدَيْنِ", "كِتَابُ الْجَنَّةِ وَصِفَةِ نَعِيمِهَا", "مَا جَاءَ فِي حُسْنِ الْخُلُقِ",
+                  "بَابٌ: أَيُّ الصَّدَقَةِ أَفْضَلُ"):
+        assert chapter_titles.names_a_subject(title), title
+    for title in ("حَدِيثُ أُمِّ سَلَمَةَ زَوْجِ النَّبِيِّ ﷺ", "مُسْنَدُ أَبِي هُرَيْرَةَ", "وَمِنْ أَخْبَارِ عُثْمَانَ بْنِ عَفَّانَ",
+                  "ذِكْرُ الِاخْتِلَافِ عَلَى سُفْيَانَ", "مِنْ مُسْنَدِ بَنِي هَاشِمٍ", ""):
+        assert not chapter_titles.names_a_subject(title), title
+
+
+def test_a_heading_under_a_companion_is_not_compared(monkeypatch):
+    monkeypatch.setattr(chapter_titles, "_vectors", chapter_titles._TitleVectors())
+    embedder = CountingEmbedder()
+    found = chapter_titles.closeness(embedder, "الأم", ["حديث أم سلمة زوج النبي ﷺ", "باب بر الوالدين"])
+    assert list(found) == ["باب بر الوالدين"] and embedder.embedded == ["باب بر الوالدين"]
