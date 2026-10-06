@@ -188,15 +188,20 @@ def find_quote(query: str) -> list[str]:
 # included («عن عائشة أم المؤمنين»: the mother of the believers, not a mother), so the closest
 # texts were about Aisha. Up to SUBJECT_MAX_WORDS words, a query is a subject: the closest texts
 # are reordered by how many of its words are in the hadith's own words (after the chain).
-SUBJECT_MAX_WORDS = 4
+SUBJECT_MAX_WORDS = 6
 # Words that frame a subject rather than name it («فضل الأم», «حكم الربا», «ثواب الصدقة»),
 # compared in _subject_words() form.
-_FRAMING = {"فضل", "فضائل", "حكم", "احكام", "ثواب", "اجر", "جزاء", "عقوبة", "حديث", "احاديث", "باب"}
+_FRAMING = {"فضل", "فضائل", "فضيلة", "حكم", "احكام", "ثواب", "اجر", "جزاء", "عقوبة", "حديث", "احاديث", "باب",
+            "اداب", "حق", "حقوق", "منزلة", "مكانة", "اهمية", "معني", "فوائد", "ثمرة", "ثمرات",
+            "هل", "كيف", "ماذا", "لماذا", "متي", "هو", "الاسلام", "النبي", "الرسول"}
 _SUBJECT_LETTERS = str.maketrans({"أ": "ا", "إ": "ا", "آ": "ا", "ٱ": "ا", "ى": "ي"})  # ة kept: أمة is not أم
 _PROPHET = re.compile(r"صلي الله عليه وسلم")
 _TITLE = re.compile(r"ام المؤمنين")  # Aisha, Umm Salama…: a name, not a mother
 _ARTICLES = ("بال", "كال", "فال", "وال", "لل", "ال")
-_PRONOUNS = ("كما", "هما", "كم", "هم", "هن", "نا", "ها", "ك", "ه", "ي")
+# Endings, longest first, with the shortest stem each may leave: an attached pronoun, a dual or plural.
+_ENDINGS = tuple((e, 2) for e in ("كما", "هما", "كم", "هم", "هن", "نا", "ها", "ك", "ه", "ي")) + tuple(
+    (e, 3) for e in ("ات", "ين", "ون", "ان", "ا"))  # «علما»: the alef of tanween
+_ENDINGS = tuple(sorted(_ENDINGS, key=lambda e: -len(e[0])))
 
 
 def _subject_words(text: str) -> list[str]:
@@ -206,8 +211,9 @@ def _subject_words(text: str) -> list[str]:
 
 
 def _forms(word: str) -> set[str]:
-    """A word and its stems without a leading و/ف, an article, a plural ات or an attached pronoun:
-    «وأمك» → {«وامك», «امك», «ام»}, «الأم» → {«الام», «ام»}. Two words match when they share one."""
+    """A word and its stems without a leading و/ف, an article, and up to two endings (an attached
+    pronoun, a dual or plural): «وأمك» → «ام», «الأمهات» → «امه» → «ام», «والديه» → «والدي» →
+    «والد», «صلاتك» → «صلات» → «صلاة». Two words match when they share one."""
     forms = {word}
     if len(word) >= 4 and word[0] in "وف":
         forms.add(word[1:])
@@ -216,14 +222,17 @@ def _forms(word: str) -> set[str]:
             if form.startswith(article) and len(form) - len(article) >= 2:
                 forms.add(form[len(article):])
                 break
-    for form in list(forms):
-        if form.endswith("ات") and len(form) >= 5:  # «الأمهات» → «امه» → «ام»
-            forms.add(form[:-2])
-    for form in list(forms):
-        for pronoun in _PRONOUNS:
-            if form.endswith(pronoun) and len(form) - len(pronoun) >= 2:
-                forms.add(form[:-len(pronoun)])
-                break
+    for _ in range(2):
+        for form in list(forms):
+            for ending, shortest in _ENDINGS:
+                if form.endswith(ending) and len(form) - len(ending) >= shortest:
+                    stem = form[:-len(ending)]
+                    forms.add(stem)
+                    if stem.endswith("ت"):  # «صلات» of «صلاته» is «صلاة»
+                        forms.add(stem[:-1] + "ة")
+                    if ending == "ات" and stem.endswith("و"):  # «الصلوات» → «صلاة»
+                        forms.add(stem[:-1] + "اة")
+                    break
     return forms
 
 

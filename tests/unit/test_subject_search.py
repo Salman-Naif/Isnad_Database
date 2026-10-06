@@ -32,3 +32,19 @@ def test_a_mother_of_the_believers_or_a_chain_is_not_the_subject():
 
 def test_framing_words_alone_match_nothing():
     assert subject_overlap("فضل", CHAIN_ONLY) == 0.0
+
+
+SAID = "قال رسول الله صلى الله عليه وسلم "
+
+
+@pytest.mark.parametrize(("query", "text"), [
+    ("بر الوالدين", SAID + "رغم أنف من أدرك والديه عند الكبر"),
+    ("ما حكم ترك الصلاة", SAID + "بين الرجل وبين الشرك والكفر ترك الصلاة"),
+    ("فضل الصلاة", SAID + "كذلك مثل الصلوات الخمس يمحو الله بهن الخطايا"),
+    ("فضل الصدقة", SAID + "ما نقصت صدقة من مال"),
+    ("حق الجار", SAID + "ما زال جبريل يوصيني بالجار حتى ظننت أنه سيورثه"),
+    ("فضل العلم", SAID + "من سلك طريقا يلتمس فيه علما سهل الله له به طريقا إلى الجنة"),
+    ("الغيبة", SAID + "أتدرون ما الغيبة قال ذكرك أخاك بما يكره"),
+])
+def test_common_subjects_are_found_in_the_hadiths_about_them(query, text):
+    assert subject_overlap(query, text) > 0
