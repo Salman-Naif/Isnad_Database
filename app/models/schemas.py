@@ -129,6 +129,8 @@ class SystemStatus(BaseModel):
 class SiteSearchRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=2000)
     top_k: int = Field(default=5, ge=1, le=20)
+    # A title («الصيام»): the hadiths holding its words (or under that topic) come first.
+    by_title: bool = False
 
 
 class SanadNode(BaseModel):

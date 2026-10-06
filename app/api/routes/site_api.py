@@ -33,6 +33,9 @@ from app.services.vector_store import VectorStore, VectorStoreError
 # similarity shown is not changed.
 SUBJECT_POOL = 60
 SUBJECT_WEIGHT = 0.15
+# A search by title: more texts, and every one holding the title's words before any that doesn't.
+TITLE_POOL = 100
+TITLE_WEIGHT = 1.0
 
 router = APIRouter(prefix="/v1", tags=["site api"], dependencies=[Depends(require_site_key)])
 
@@ -62,8 +65,10 @@ def search(
         exact.sort(key=lambda hit: books.rank(hit["metadata"].get("reference") or hit["metadata"].get("source") or ""))
         # Extra candidates, since a hadith's two vectors often both rank near the top; more for a
         # subject («فضل الأم»), whose closest texts are reordered below.
-        subject = text_index.is_subject(payload.query)
-        pool = max(payload.top_k * 3, SUBJECT_POOL) if subject else payload.top_k * 3
+        subject = payload.by_title or text_index.is_subject(payload.query)
+        pool = payload.top_k * 3
+        if subject:
+            pool = max(pool, TITLE_POOL if payload.by_title else SUBJECT_POOL)
         close = store.query(embedder.encode_query(query), top_k=pool)
     except (EmbeddingError, VectorStoreError) as exc:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
@@ -73,9 +78,17 @@ def search(
     for hit in exact + close:
         hit["text"] = stored.get(hit["id"]) or hit["text"]
     if subject:
+        weight = TITLE_WEIGHT if payload.by_title else SUBJECT_WEIGHT
+
+        def share(hit: dict) -> float:
+            found = text_index.subject_overlap(payload.query, hit["text"])
+            if payload.by_title:  # the book's chapter («كتاب الصوم») names it too
+                found = max(found, text_index.subject_overlap(payload.query, hit["metadata"].get("topic") or "",
+                                                              whole=True))
+            return found
+
         # A stable sort: texts with as many of the subject's words keep their order by meaning.
-        close.sort(key=lambda hit: -(hit["similarity"]
-                                     + SUBJECT_WEIGHT * text_index.subject_overlap(payload.query, hit["text"])))
+        close.sort(key=lambda hit: -(hit["similarity"] + weight * share(hit)))
 
     matches: list[SiteMatch] = []
     seen: set[str] = set()
