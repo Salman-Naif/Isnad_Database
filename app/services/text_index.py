@@ -181,3 +181,65 @@ def find_quote(query: str) -> list[str]:
             len(rows) > MAX_MATN_MATCHES or _TRANSMISSION & set(words)):
         return []
     return [r["item_id"] for r in rows[:MAX_MATN_MATCHES]]
+
+
+# --- What a short query is about ---
+# «فضل الأم» names a subject. Its vector lands near every text with «فضل» or «أم» in it, chains
+# included («عن عائشة أم المؤمنين»: the mother of the believers, not a mother), so the closest
+# texts were about Aisha. Up to SUBJECT_MAX_WORDS words, a query is a subject: the closest texts
+# are reordered by how many of its words are in the hadith's own words (after the chain).
+SUBJECT_MAX_WORDS = 4
+# Words that frame a subject rather than name it («فضل الأم», «حكم الربا», «ثواب الصدقة»),
+# compared in _subject_words() form.
+_FRAMING = {"فضل", "فضائل", "حكم", "احكام", "ثواب", "اجر", "جزاء", "عقوبة", "حديث", "احاديث", "باب"}
+_SUBJECT_LETTERS = str.maketrans({"أ": "ا", "إ": "ا", "آ": "ا", "ٱ": "ا", "ى": "ي"})  # ة kept: أمة is not أم
+_PROPHET = re.compile(r"صلي الله عليه وسلم")
+_TITLE = re.compile(r"ام المؤمنين")  # Aisha, Umm Salama…: a name, not a mother
+_ARTICLES = ("بال", "كال", "فال", "وال", "لل", "ال")
+_PRONOUNS = ("كما", "هما", "كم", "هم", "هن", "نا", "ها", "ك", "ه", "ي")
+
+
+def _subject_words(text: str) -> list[str]:
+    text = unicodedata.normalize("NFKC", text)  # "ﷺ" → "صلى الله عليه وسلم"
+    text = TATWEEL.sub("", ARABIC_DIACRITICS.sub("", text)).translate(_SUBJECT_LETTERS)
+    return _NOT_WORD.sub(" ", text).split()
+
+
+def _forms(word: str) -> set[str]:
+    """A word and its stems without a leading و/ف, an article, a plural ات or an attached pronoun:
+    «وأمك» → {«وامك», «امك», «ام»}, «الأم» → {«الام», «ام»}. Two words match when they share one."""
+    forms = {word}
+    if len(word) >= 4 and word[0] in "وف":
+        forms.add(word[1:])
+    for form in list(forms):
+        for article in _ARTICLES:
+            if form.startswith(article) and len(form) - len(article) >= 2:
+                forms.add(form[len(article):])
+                break
+    for form in list(forms):
+        if form.endswith("ات") and len(form) >= 5:  # «الأمهات» → «امه» → «ام»
+            forms.add(form[:-2])
+    for form in list(forms):
+        for pronoun in _PRONOUNS:
+            if form.endswith(pronoun) and len(form) - len(pronoun) >= 2:
+                forms.add(form[:-len(pronoun)])
+                break
+    return forms
+
+
+def is_subject(query: str) -> bool:
+    return 0 < len(_subject_words(query)) <= SUBJECT_MAX_WORDS
+
+
+def subject_overlap(query: str, text: str) -> float:
+    """Share of a subject's words (0–1) found in the hadith's own words: after the first mention
+    of the Prophet ﷺ when there is one, and never in «أم المؤمنين»."""
+    words = [w for w in _subject_words(query)
+             if w not in _FRAMING and normalize(w) not in _STOPWORDS and len(w) > 1]
+    if not words:
+        return 0.0
+    body = " ".join(_subject_words(text))
+    found = _PROPHET.search(body)
+    body = _TITLE.sub(" ", body[found.end():] if found else body)
+    present = set().union(*(_forms(w) for w in body.split()))
+    return round(sum(bool(_forms(w) & present) for w in words) / len(words), 4)

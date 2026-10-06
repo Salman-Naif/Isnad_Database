@@ -28,6 +28,12 @@ from app.services.site_settings import get_site_settings
 from app.services.text_processing import clean
 from app.services.vector_store import VectorStore, VectorStoreError
 
+# A subject («فضل الأم»): this many closest texts are reordered by the share of its words in the
+# hadith's own words, worth up to SUBJECT_WEIGHT of similarity (text_index.subject_overlap). The
+# similarity shown is not changed.
+SUBJECT_POOL = 60
+SUBJECT_WEIGHT = 0.15
+
 router = APIRouter(prefix="/v1", tags=["site api"], dependencies=[Depends(require_site_key)])
 
 
@@ -54,8 +60,11 @@ def search(
         # A quote found word for word in several books: listed in the books' order (al-Bukhari,
         # Muslim, then the Sunan…), not in the order the files were uploaded.
         exact.sort(key=lambda hit: books.rank(hit["metadata"].get("reference") or hit["metadata"].get("source") or ""))
-        # Extra candidates, since a hadith's two vectors often both rank near the top.
-        close = store.query(embedder.encode_query(query), top_k=payload.top_k * 3)
+        # Extra candidates, since a hadith's two vectors often both rank near the top; more for a
+        # subject («فضل الأم»), whose closest texts are reordered below.
+        subject = text_index.is_subject(payload.query)
+        pool = max(payload.top_k * 3, SUBJECT_POOL) if subject else payload.top_k * 3
+        close = store.query(embedder.encode_query(query), top_k=pool)
     except (EmbeddingError, VectorStoreError) as exc:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
 
@@ -63,6 +72,10 @@ def search(
     stored = text_index.texts([hit["id"] for hit in exact + close])
     for hit in exact + close:
         hit["text"] = stored.get(hit["id"]) or hit["text"]
+    if subject:
+        # A stable sort: texts with as many of the subject's words keep their order by meaning.
+        close.sort(key=lambda hit: -(hit["similarity"]
+                                     + SUBJECT_WEIGHT * text_index.subject_overlap(payload.query, hit["text"])))
 
     matches: list[SiteMatch] = []
     seen: set[str] = set()
