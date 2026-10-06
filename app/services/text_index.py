@@ -198,9 +198,10 @@ _SUBJECT_LETTERS = str.maketrans({"أ": "ا", "إ": "ا", "آ": "ا", "ٱ": "ا"
 _PROPHET = re.compile(r"صلي الله عليه وسلم")
 _TITLE = re.compile(r"ام المؤمنين")  # Aisha, Umm Salama…: a name, not a mother
 _ARTICLES = ("بال", "كال", "فال", "وال", "لل", "ال")
-# Endings, longest first, with the shortest stem each may leave: an attached pronoun, a dual or plural.
-_ENDINGS = tuple((e, 2) for e in ("كما", "هما", "كم", "هم", "هن", "نا", "ها", "ك", "ه", "ي")) + tuple(
-    (e, 3) for e in ("ات", "ين", "ون", "ان", "ا"))  # «علما»: the alef of tanween
+# Endings, longest first, with the shortest stem each may leave: an attached pronoun (and the و of
+# «أبوك» → «ابو» → «اب»), a dual or plural, the alef of tanween («علما»).
+_ENDINGS = tuple((e, 2) for e in ("كما", "هما", "كم", "هم", "هن", "نا", "ها", "ك", "ه", "ي", "و")) + tuple(
+    (e, 3) for e in ("ات", "ين", "ون", "ان", "ا"))
 _ENDINGS = tuple(sorted(_ENDINGS, key=lambda e: -len(e[0])))
 
 
@@ -236,19 +237,28 @@ def _forms(word: str) -> set[str]:
     return forms
 
 
+# The first word of a name, alone: «أم سلمة», «أبو هريرة», «أبا بكر», «ابن عمر», «بنت جحش».
+_NAMES = {"ام", "ابو", "ابا", "ابن", "بن", "بنت", "ابنة"}
+
+
+def _bare(word: str) -> str:
+    return word[1:] if len(word) >= 3 and word[0] in "وف" else word
+
+
 def is_subject(query: str) -> bool:
     return 0 < len(_subject_words(query)) <= SUBJECT_MAX_WORDS
 
 
-def subject_overlap(query: str, text: str) -> float:
+def subject_overlap(query: str, text: str, whole: bool = False) -> float:
     """Share of a subject's words (0–1) found in the hadith's own words: after the first mention
-    of the Prophet ﷺ when there is one, and never in «أم المؤمنين»."""
+    of the Prophet ﷺ when there is one (the `whole` text for a chapter title), and never in a
+    name: «أم سلمة», «أبو هريرة», «ابن عمر» (a mother is «أمك», «أمه», «الأم» in a hadith)."""
     words = [w for w in _subject_words(query)
              if w not in _FRAMING and normalize(w) not in _STOPWORDS and len(w) > 1]
     if not words:
         return 0.0
     body = " ".join(_subject_words(text))
-    found = _PROPHET.search(body)
+    found = None if whole else _PROPHET.search(body)
     body = _TITLE.sub(" ", body[found.end():] if found else body)
-    present = set().union(*(_forms(w) for w in body.split()))
+    present = set().union(*(_forms(w) for w in body.split() if _bare(w) not in _NAMES))
     return round(sum(bool(_forms(w) & present) for w in words) / len(words), 4)

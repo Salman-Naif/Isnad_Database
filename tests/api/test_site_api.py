@@ -182,3 +182,17 @@ def test_a_subject_finds_the_hadiths_about_it_not_the_chains_that_mention_it(adm
                                 json={"query": "فضل الأم", "top_k": 2}).json()["matches"]
 
     assert [m["text"] for m in matches] == [mother["text"], aisha["text"]]
+
+
+def test_a_search_by_title_puts_every_hadith_holding_it_first(admin_client, site_headers):
+    fasting = {"id": "1", "source": "صحيح البخاري", "sanad": [], "topic": "كتاب الصيام",
+               "text": "قال رسول الله صلى الله عليه وسلم من صام رمضان إيمانا واحتسابا غفر له ما تقدم من ذنبه"}
+    other = {"id": "2", "source": "صحيح البخاري", "sanad": [], "topic": "كتاب العلم",
+             "text": "قال رسول الله صلى الله عليه وسلم الصيام الصيام الصيام صبر"}
+    res = admin_client.post("/api/sources", files={"file": ("b.json", json.dumps([fasting, other]).encode())})
+    assert res.json()["status"] == "ready", res.text
+
+    matches = admin_client.post("/api/v1/search", headers=site_headers,
+                                json={"query": "الصيام", "top_k": 2, "by_title": True}).json()["matches"]
+
+    assert {m["text"] for m in matches} == {fasting["text"], other["text"]}  # both hold it: by the text or chapter
