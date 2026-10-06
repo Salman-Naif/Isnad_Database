@@ -9,6 +9,7 @@ Nothing here is public except /health and the login page.
 """
 
 import logging
+import time
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -19,6 +20,7 @@ from app.api.routes import admins, auth, control, health, pages, reports, site_a
 from app.config import BASE_DIR, get_settings
 from app.core.logging import setup_logging
 from app.db.sqlite import init_db
+from app.services import text_index
 from app.services.auth import ensure_bootstrap_admin
 from app.services.sources import recover_interrupted, schedule_index_rebuild
 
@@ -61,7 +63,23 @@ async def lifespan(_: FastAPI):
         get_vector_store().count()
     except Exception:
         logger.exception("Vector database could not be opened at startup")
+    warm_up()
     yield
+
+
+def warm_up() -> None:
+    """One search in each index before /health answers: the vector index (~130,000 vectors)
+    loads into memory on its first search, and a redeploy routes visitors here as soon as
+    /health does — they would otherwise wait for it, or time out."""
+    started = time.perf_counter()
+    try:
+        store = get_vector_store()
+        if store.count():
+            store.query([1.0] + [0.0] * (settings.embedding_dimensions - 1), top_k=1)
+        text_index.find_quote("قال رسول الله صلى الله عليه وسلم")
+        logger.info("Indexes warmed up in %.1fs", time.perf_counter() - started)
+    except Exception:
+        logger.exception("Could not warm up the indexes")
 
 
 app = FastAPI(
