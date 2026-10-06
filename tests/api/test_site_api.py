@@ -166,3 +166,19 @@ def test_a_quote_in_several_books_comes_in_the_books_order(admin_client, site_he
     res = admin_client.post("/api/v1/search", headers=site_headers,
                             json={"query": "إنما الأعمال بالنيات وإنما لكل امرئ ما نوى", "top_k": 3})
     assert [m["source"] for m in res.json()["matches"]] == ["صحيح البخاري", "صحيح مسلم", "سنن ابن ماجه"]
+
+
+def test_a_subject_finds_the_hadiths_about_it_not_the_chains_that_mention_it(admin_client, site_headers):
+    aisha = {"id": "1", "source": "صحيح البخاري", "sanad": [],
+             "text": "عن عائشة أم المؤمنين رضي الله عنها قالت قال رسول الله صلى الله عليه وسلم "
+                     "فضل عائشة على النساء كفضل الثريد على سائر الطعام"}
+    mother = {"id": "2", "source": "صحيح البخاري", "sanad": [],
+              "text": "عن أبي هريرة قال جاء رجل إلى رسول الله صلى الله عليه وسلم فقال من أحق الناس "
+                      "بحسن صحابتي قال أمك قال ثم من قال ثم أمك قال ثم من قال ثم أبوك"}
+    res = admin_client.post("/api/sources", files={"file": ("b.json", json.dumps([aisha, mother]).encode())})
+    assert res.json()["status"] == "ready", res.text
+
+    matches = admin_client.post("/api/v1/search", headers=site_headers,
+                                json={"query": "فضل الأم", "top_k": 2}).json()["matches"]
+
+    assert [m["text"] for m in matches] == [mother["text"], aisha["text"]]
