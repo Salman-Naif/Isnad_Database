@@ -18,7 +18,7 @@ The main website — public search, verification and chat with the model — is 
 **Isnad_Website**, deployed as its own service. It connects to this database through a small API
 protected by `SITE_API_KEY`; this repository contains the database only.
 
-**Team:** فريق إسناد (Isnad) — سلمان نايف المحيسن (almuhaysins@outlook.sa) ·
+**Team:** فريق إسناد (Isnad) — سلمان نايف المحيسن (almuhaysins@gmail.com) ·
 نوت عبدالعزيز الجهني (noota123db@gmail.com)
 
 Isnad is the team's entry in **تحدي الذكاء الاصطناعي في خدمة المحتوى الإسلامي** (The AI
